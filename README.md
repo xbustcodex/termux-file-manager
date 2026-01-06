@@ -28,3 +28,4 @@ Go to:
 - Syntax highlighting
 - Integrated terminal view
 - Plugin system
+ 
