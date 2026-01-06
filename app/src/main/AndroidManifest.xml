@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Let Android know we want to talk to Termux -->
+    <queries>
+        <package android:name="com.termux" />
+    </queries>
+    
     <!-- For legacy /sdcard/TermuxProjects access on older devices -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
+    
     <application
+        android:name=".TermuxFmApp"
+        android:icon="@mipmap/ic_launcher"
         android:allowBackup="true"
         android:label="Termux File Manager"
         android:supportsRtl="true"
