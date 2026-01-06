@@ -13,7 +13,6 @@
     
     <application
         android:name=".TermuxFmApp"
-        android:icon="@mipmap/ic_launcher"
         android:allowBackup="true"
         android:label="Termux File Manager"
         android:supportsRtl="true"
