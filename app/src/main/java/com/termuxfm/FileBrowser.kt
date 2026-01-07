@@ -183,7 +183,7 @@ fun FileBrowserScreen(
         }
     }
 
-    // New Script Run dialog
+    // Script Run dialog
     if (pendingRunPath != null) {
         val logicalPath = pendingRunPath!!
         val absPath = resolveScriptAbsolutePath(storage, logicalPath)
