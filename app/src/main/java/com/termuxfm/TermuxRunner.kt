@@ -10,7 +10,6 @@ object TermuxRunner {
     private const val RUN_COMMAND_SERVICE = "com.termux.app.RunCommandService"
     private const val ACTION_RUN_COMMAND = "com.termux.RUN_COMMAND"
 
-    // Extra keys as documented in the Termux RUN_COMMAND wiki
     private const val EXTRA_COMMAND_PATH = "com.termux.RUN_COMMAND_PATH"
     private const val EXTRA_ARGUMENTS = "com.termux.RUN_COMMAND_ARGUMENTS"
     private const val EXTRA_WORKDIR = "com.termux.RUN_COMMAND_WORKDIR"
@@ -18,39 +17,8 @@ object TermuxRunner {
     private const val EXTRA_SESSION_ACTION = "com.termux.RUN_COMMAND_SESSION_ACTION"
 
     /**
-     * Ask Termux to run a script.
-     *
-     * @param absolutePath Absolute path to the script, e.g.
-     *        /data/data/com.termux/files/home/myscript.sh
-     * @param workDir Working directory (default: Termux home)
-     * @param background If true, run without opening a session
+     * Low-level Termux RUN_COMMAND call.
      */
-    fun runScriptInTerminal(
-        context: Context,
-        absolutePath: String,
-        workDir: String? = null
-    ) {
-        runScript(
-            context = context,
-            absolutePath = absolutePath,
-            workDir = workDir,
-            background = false
-        )
-    }
-
-    fun runScriptInBackground(
-        context: Context,
-        absolutePath: String,
-        workDir: String? = null
-    ) {
-        runScript(
-            context = context,
-            absolutePath = absolutePath,
-            workDir = workDir,
-            background = true
-        )
-    }
-
     fun runScript(
         context: Context,
         absolutePath: String,
@@ -64,7 +32,7 @@ object TermuxRunner {
             putExtra(EXTRA_ARGUMENTS, emptyArray<String>())
             putExtra(EXTRA_WORKDIR, workDir ?: "/data/data/com.termux/files/home")
             putExtra(EXTRA_BACKGROUND, background)
-            // "0" = open new session & switch to it
+            // "0" = open / reuse session
             putExtra(EXTRA_SESSION_ACTION, "0")
         }
 
@@ -82,5 +50,33 @@ object TermuxRunner {
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
+
+    /** Convenience: open a Termux terminal window and run the script. */
+    fun runScriptInTerminal(
+        context: Context,
+        absolutePath: String,
+        workDir: String? = null
+    ) {
+        runScript(
+            context = context,
+            absolutePath = absolutePath,
+            workDir = workDir,
+            background = false
+        )
+    }
+
+    /** Convenience: run in the background without popping a terminal. */
+    fun runScriptInBackground(
+        context: Context,
+        absolutePath: String,
+        workDir: String? = null
+    ) {
+        runScript(
+            context = context,
+            absolutePath = absolutePath,
+            workDir = workDir,
+            background = true
+        )
     }
 }
