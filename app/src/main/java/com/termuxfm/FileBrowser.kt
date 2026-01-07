@@ -329,4 +329,25 @@ private fun NamePromptDialog(
         }
     )
 }
+private fun isRunnableScript(path: String): Boolean {
+    val lower = path.lowercase()
+    return listOf(".sh", ".bash", ".py", ".js", ".php")
+        .any { lower.endsWith(it) }
+}
+
+/**
+ * Map logical browser path (/myscript.sh) to an absolute path that Termux understands.
+ */
+private fun resolveScriptAbsolutePath(
+    storageProvider: StorageProvider,
+    logicalPath: String
+): String? {
+    return when (storageProvider) {
+        is SafStorageProvider ->
+            "/data/data/com.termux/files/home$logicalPath"
+        is SdcardStorageProvider ->
+            "/sdcard/TermuxProjects$logicalPath"
+        else -> null
+    }
+}
 
