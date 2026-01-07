@@ -25,6 +25,32 @@ object TermuxRunner {
      * @param workDir Working directory (default: Termux home)
      * @param background If true, run without opening a session
      */
+    fun runScriptInTerminal(
+        context: Context,
+        absolutePath: String,
+        workDir: String? = null
+    ) {
+        runScript(
+            context = context,
+            absolutePath = absolutePath,
+            workDir = workDir,
+            background = false
+        )
+    }
+
+    fun runScriptInBackground(
+        context: Context,
+        absolutePath: String,
+        workDir: String? = null
+    ) {
+        runScript(
+            context = context,
+            absolutePath = absolutePath,
+            workDir = workDir,
+            background = true
+        )
+    }
+
     fun runScript(
         context: Context,
         absolutePath: String,
