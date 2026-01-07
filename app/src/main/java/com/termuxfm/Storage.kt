@@ -105,26 +105,22 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
 
     override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
         resolve(path).mkdirs()
-        Unit
     }
 
     override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
         val f = resolve(path)
         f.parentFile?.mkdirs()
         if (!f.exists()) f.createNewFile()
-        Unit
     }
 
     override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
         resolve(path).deleteRecursively()
-        Unit
     }
 
     override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
         val f = resolve(path)
         val target = File(f.parentFile, newName)
-        if (!f.renameTo(target)) error("Rename failed")
-        Unit
+        f.renameTo(target)
     }
 }
 
@@ -178,7 +174,6 @@ class SafStorageProvider(
         context.contentResolver.openOutputStream(file.uri, "wt")?.use { out ->
             out.bufferedWriter().use { it.write(content) }
         }
-        Unit
     }
 
     override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
@@ -186,7 +181,6 @@ class SafStorageProvider(
         val name = path.trimEnd('/').substringAfterLast("/")
         val parent = findDoc(parentPath) ?: error("Parent not found: $parentPath")
         parent.createDirectory(name) ?: error("Failed to create folder")
-        Unit
     }
 
     override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
@@ -194,19 +188,16 @@ class SafStorageProvider(
         val name = path.substringAfterLast("/")
         val parent = findDoc(parentPath) ?: error("Parent not found: $parentPath")
         parent.createFile("text/plain", name) ?: error("Failed to create file")
-        Unit
     }
 
     override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
-        val doc = findDoc(path) ?: return@withContext Unit
-        if (!doc.delete()) error("Delete failed")
-        Unit
+        val doc = findDoc(path) ?: return@withContext
+        doc.delete()
     }
 
     override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
         val doc = findDoc(path) ?: error("Not found")
-        if (!doc.renameTo(newName)) error("Rename failed")
-        Unit
+        doc.renameTo(newName)
     }
 }
 
