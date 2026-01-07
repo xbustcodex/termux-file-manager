@@ -69,7 +69,7 @@ private fun AppRoot(onPickSafFolder: () -> Unit) {
     val storage: StorageProvider = remember(config) {
         when (config.mode) {
             WorkspaceMode.SAF -> SafStorageProvider(context, config.safTreeUri)
-            WorkspaceMode.LEGACY_SD -> LegacyFileStorageProvider(config.legacyRootPath)
+            WorkspaceMode.LEGACY_SD -> SdcardStorageProvider()
         }
     }
 
