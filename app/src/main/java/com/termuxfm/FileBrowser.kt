@@ -1,5 +1,6 @@
 package com.termuxfm
 
+import android.widget.Toast
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -33,6 +35,7 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
         )
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SafSetupScreen(
@@ -67,6 +70,7 @@ fun SafSetupScreen(
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileBrowserScreen(
@@ -76,6 +80,7 @@ fun FileBrowserScreen(
     onOpenFile: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var items by remember { mutableStateOf<List<FileItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -85,6 +90,7 @@ fun FileBrowserScreen(
     var showNewFolderDialog by remember { mutableStateOf(false) }
     var showRenameDialogFor by remember { mutableStateOf<FileItem?>(null) }
     var showDeleteDialogFor by remember { mutableStateOf<FileItem?>(null) }
+    var pendingRunPath by remember { mutableStateOf<String?>(null) }
 
     fun refresh() {
         scope.launch {
@@ -165,12 +171,68 @@ fun FileBrowserScreen(
                                 if (item.isDir) onNavigate(item.path) else onOpenFile(item.path)
                             },
                             onRename = { showRenameDialogFor = item },
-                            onDelete = { showDeleteDialogFor = item }
+                            onDelete = { showDeleteDialogFor = item },
+                            onRunScript = { p ->
+                                pendingRunPath = p
+                            }
                         )
                         Divider()
                     }
                 }
             }
+        }
+    }
+
+    // New Script Run dialog
+    if (pendingRunPath != null) {
+        val logicalPath = pendingRunPath!!
+        val absPath = resolveScriptAbsolutePath(storage, logicalPath)
+        val workDir = absPath?.substringBeforeLast('/', "/data/data/com.termux/files/home")
+
+        if (absPath == null) {
+            LaunchedEffect(logicalPath) {
+                Toast.makeText(
+                    context,
+                    "Cannot resolve script path for this storage provider",
+                    Toast.LENGTH_LONG
+                ).show()
+                pendingRunPath = null
+            }
+        } else {
+            AlertDialog(
+                onDismissRequest = { pendingRunPath = null },
+                title = { Text("Run script") },
+                text = { Text("What do you want to do with:\n$logicalPath") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        TermuxRunner.runScriptInTerminal(
+                            context = context,
+                            absolutePath = absPath,
+                            workDir = workDir
+                        )
+                        pendingRunPath = null
+                    }) {
+                        Text("Run in Termux")
+                    }
+                },
+                dismissButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = {
+                            TermuxRunner.runScriptInBackground(
+                                context = context,
+                                absolutePath = absPath,
+                                workDir = workDir
+                            )
+                            pendingRunPath = null
+                        }) {
+                            Text("Run in background")
+                        }
+                        TextButton(onClick = { pendingRunPath = null }) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+            )
         }
     }
 
@@ -270,7 +332,8 @@ private fun FileRow(
     item: FileItem,
     onClick: () -> Unit,
     onRename: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onRunScript: (String) -> Unit
 ) {
     ListItem(
         headlineContent = {
@@ -285,6 +348,11 @@ private fun FileRow(
         },
         trailingContent = {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (!item.isDir && isRunnableScript(item.path)) {
+                    TextButton(onClick = { onRunScript(item.path) }) {
+                        Text("Run")
+                    }
+                }
                 TextButton(onClick = onRename) { Text("Rename") }
                 TextButton(onClick = onDelete) { Text("Delete") }
             }
@@ -329,6 +397,7 @@ private fun NamePromptDialog(
         }
     )
 }
+
 private fun isRunnableScript(path: String): Boolean {
     val lower = path.lowercase()
     return listOf(".sh", ".bash", ".py", ".js", ".php")
@@ -350,4 +419,3 @@ private fun resolveScriptAbsolutePath(
         else -> null
     }
 }
-
