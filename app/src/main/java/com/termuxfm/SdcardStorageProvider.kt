@@ -1,5 +1,7 @@
 package com.termuxfm
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -7,52 +9,73 @@ import java.io.File
  */
 class SdcardStorageProvider : StorageProvider() {
 
-    private val base = "/sdcard/TermuxProjects"
+    private val baseDir = File("/sdcard/TermuxProjects")
 
-    private fun full(path: String): String =
-        if (path.startsWith("/")) "$base$path"
-        else "$base/$path"
-
-    override suspend fun listFiles(path: String): List<FileItem> {
-        val f = File(full(path))
-        if (!f.exists() || !f.isDirectory) return emptyList()
-
-        return f.listFiles()?.map {
-            FileItem(
-                name = it.name,
-                path = if (path == "/") "/${it.name}" else "$path/${it.name}",
-                isDirectory = it.isDirectory
-            )
-        } ?: emptyList()
+    private fun resolve(path: String): File {
+        return if (path.isBlank() || path == "/") {
+            baseDir
+        } else {
+            File(baseDir, path.removePrefix("/"))
+        }
     }
 
-    override suspend fun readFile(path: String): String {
-        return File(full(path)).readText()
+    override suspend fun list(path: String): List<FileItem> = withContext(Dispatchers.IO) {
+        val dir = resolve(path)
+        if (!dir.exists() || !dir.isDirectory) {
+            return@withContext emptyList<FileItem>()
+        }
+
+        val files = dir.listFiles() ?: return@withContext emptyList<FileItem>()
+
+        files
+            .sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name.lowercase() })
+            .map { f ->
+                FileItem(
+                    name = f.name,
+                    path = if (path == "/" || path.isBlank()) "/${f.name}" else "$path/${f.name}",
+                    isDirectory = f.isDirectory
+                )
+            }
     }
 
-    override suspend fun writeFile(path: String, content: String) {
-        File(full(path)).writeText(content)
+    override suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
+        val file = resolve(path)
+        file.readText()
     }
 
-    override suspend fun delete(path: String) {
-        File(full(path)).deleteRecursively()
+    override suspend fun writeFile(path: String, content: String) = withContext(Dispatchers.IO) {
+        val file = resolve(path)
+        file.parentFile?.mkdirs()
+        file.writeText(content)
     }
 
-    override suspend fun rename(path: String, newName: String) {
-        val f = File(full(path))
-        val newFile = File(f.parentFile, newName)
-        f.renameTo(newFile)
+    override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
+        val file = resolve(path)
+        if (file.isDirectory) {
+            file.deleteRecursively()
+        } else {
+            file.delete()
+        }
     }
 
-    override suspend fun createFolder(path: String) {
-        File(full(path)).mkdirs()
+    override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
+        val file = resolve(path)
+        val parent = file.parentFile ?: return@withContext
+        val target = File(parent, newName)
+        file.renameTo(target)
     }
 
-    override suspend fun createFile(path: String) {
-        val f = File(full(path))
-        if (!f.exists()) {
-            f.parentFile?.mkdirs()
-            f.createNewFile()
+    override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
+        val dir = resolve(path)
+        dir.mkdirs()
+    }
+
+    override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
+        val file = resolve(path)
+        file.parentFile?.mkdirs()
+        if (!file.exists()) {
+            file.createNewFile()
         }
     }
 }
+
