@@ -11,19 +11,20 @@ class SdcardStorageProvider : StorageProvider() {
 
     private val baseDir = File("/sdcard/TermuxProjects")
 
+    override fun isReady(): Boolean {
+        return baseDir.exists() && baseDir.isDirectory && baseDir.canRead()
+    }
+
     private fun resolve(path: String): File {
-        return if (path.isBlank() || path == "/") {
+        return if (path.isBlank() || path == "/")
             baseDir
-        } else {
+        else
             File(baseDir, path.removePrefix("/"))
-        }
     }
 
     override suspend fun list(path: String): List<FileItem> = withContext(Dispatchers.IO) {
         val dir = resolve(path)
-        if (!dir.exists() || !dir.isDirectory) {
-            return@withContext emptyList<FileItem>()
-        }
+        if (!dir.exists() || !dir.isDirectory) return@withContext emptyList<FileItem>()
 
         val files = dir.listFiles() ?: return@withContext emptyList<FileItem>()
 
@@ -39,8 +40,7 @@ class SdcardStorageProvider : StorageProvider() {
     }
 
     override suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
-        val file = resolve(path)
-        file.readText()
+        resolve(path).readText()
     }
 
     override suspend fun writeFile(path: String, content: String) = withContext(Dispatchers.IO) {
@@ -49,33 +49,31 @@ class SdcardStorageProvider : StorageProvider() {
         file.writeText(content)
     }
 
-    override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
+    override suspend fun delete(path: String): Boolean = withContext(Dispatchers.IO) {
         val file = resolve(path)
-        if (file.isDirectory) {
-            file.deleteRecursively()
-        } else {
-            file.delete()
-        }
+        if (!file.exists()) return@withContext false
+        if (file.isDirectory) file.deleteRecursively() else file.delete()
     }
 
-    override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
+    override suspend fun rename(path: String, newName: String): Boolean = withContext(Dispatchers.IO) {
         val file = resolve(path)
-        val parent = file.parentFile ?: return@withContext
+        val parent = file.parentFile ?: return@withContext false
         val target = File(parent, newName)
         file.renameTo(target)
     }
 
-    override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
+    override suspend fun createFolder(path: String): Boolean = withContext(Dispatchers.IO) {
         val dir = resolve(path)
+        if (dir.exists()) return@withContext false
         dir.mkdirs()
     }
 
-    override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
+    override suspend fun createFile(path: String): Boolean = withContext(Dispatchers.IO) {
         val file = resolve(path)
+        if (file.exists()) return@withContext false
         file.parentFile?.mkdirs()
-        if (!file.exists()) {
-            file.createNewFile()
-        }
+        file.createNewFile()
     }
 }
+
 
