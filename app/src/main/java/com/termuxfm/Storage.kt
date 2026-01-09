@@ -67,15 +67,23 @@ fun ensureLegacyWorkspaceExists(rootPath: String = "/sdcard/TermuxProjects") {
 }
 
 /**
- * LEGACY provider using normal filesystem (for /sdcard/TermuxProjects).
+ * Legacy /sdcard provider (non-root fallback).
  */
-class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider {
-
-    override fun isReady(): Boolean = File(rootPath).exists()
+class LegacyFileStorageProvider(
+    private val rootPath: String = "/sdcard/TermuxProjects"
+) : StorageProvider {
 
     private fun resolve(path: String): File {
-        val clean = path.trimStart('/')
-        return if (clean.isBlank()) File(rootPath) else File(rootPath, clean)
+        val clean = path.trim()
+        return if (clean.isEmpty() || clean == "/") {
+            File(rootPath)
+        } else {
+            File(rootPath, clean.trimStart('/'))
+        }
+    }
+
+    override fun isReady(): Boolean {
+        return File(rootPath).exists()
     }
 
     override suspend fun list(path: String): List<FileItem> = withContext(Dispatchers.IO) {
@@ -105,22 +113,26 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
 
     override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
         resolve(path).mkdirs()
+        Unit
     }
 
     override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
         val f = resolve(path)
         f.parentFile?.mkdirs()
         if (!f.exists()) f.createNewFile()
+        Unit
     }
 
     override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
         resolve(path).deleteRecursively()
+        Unit
     }
 
     override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
         val f = resolve(path)
         val target = File(f.parentFile, newName)
-        f.renameTo(target)
+        if (!f.renameTo(target)) error("Rename failed")
+        Unit
     }
 }
 
@@ -135,69 +147,77 @@ class SafStorageProvider(
     private fun rootDoc(): DocumentFile? =
         treeUri?.let { DocumentFile.fromTreeUri(context, it) }
 
-    override fun isReady(): Boolean = rootDoc() != null
-
     private fun findDoc(path: String): DocumentFile? {
         val root = rootDoc() ?: return null
-        if (path == "/" || path.isBlank()) return root
+        val clean = path.trim()
 
-        var current = root
-        val parts = path.trim('/').split("/").filter { it.isNotBlank() }
-        for (p in parts) {
-            current = current.findFile(p) ?: return null
+        if (clean.isEmpty() || clean == "/") return root
+
+        val segments = clean.trimStart('/').split('/')
+        var current: DocumentFile? = root
+        for (seg in segments) {
+            current = current?.findFile(seg)
+            if (current == null) break
         }
         return current
     }
 
+    override fun isReady(): Boolean = rootDoc() != null
+
     override suspend fun list(path: String): List<FileItem> = withContext(Dispatchers.IO) {
-        val dir = findDoc(path) ?: return@withContext emptyList()
-        dir.listFiles().map {
+        val doc = findDoc(path) ?: return@withContext emptyList()
+        val children = doc.listFiles().map {
             FileItem(
-                name = it.name ?: "unknown",
+                name = it.name.orEmpty(),
                 path = (path.trimEnd('/') + "/" + (it.name ?: "")).replace("//", "/"),
                 isDir = it.isDirectory,
                 size = if (it.isFile) it.length() else null,
                 modified = it.lastModified()
             )
-        }.sortedWith(compareBy<FileItem> { !it.isDir }.thenBy { it.name.lowercase() })
+        }
+
+        children.sortedWith(compareBy<FileItem> { !it.isDir }.thenBy { it.name.lowercase() })
     }
 
     override suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
-        val file = findDoc(path) ?: error("File not found: $path")
-        context.contentResolver.openInputStream(file.uri)?.use { ins ->
-            ins.bufferedReader().readText()
-        } ?: ""
+        val doc = findDoc(path) ?: return@withContext ""
+        val input = context.contentResolver.openInputStream(doc.uri) ?: return@withContext ""
+        input.bufferedReader().use { it.readText() }
     }
 
     override suspend fun writeFile(path: String, content: String) = withContext(Dispatchers.IO) {
-        val file = findDoc(path) ?: error("File not found: $path")
-        context.contentResolver.openOutputStream(file.uri, "wt")?.use { out ->
-            out.bufferedWriter().use { it.write(content) }
-        }
+        val doc = findDoc(path) ?: error("File not found")
+        val output = context.contentResolver.openOutputStream(doc.uri, "rwt")
+            ?: error("Cannot open output stream")
+        output.bufferedWriter().use { it.write(content) }
     }
 
     override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
-        val parentPath = path.trimEnd('/').substringBeforeLast("/", "/")
+        val parentPath = path.trimEnd('/').substringBeforeLast("/", "")
         val name = path.trimEnd('/').substringAfterLast("/")
-        val parent = findDoc(parentPath) ?: error("Parent not found: $parentPath")
+        val parent = findDoc(parentPath) ?: error("Parent not found")
         parent.createDirectory(name) ?: error("Failed to create folder")
+        Unit
     }
 
     override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
-        val parentPath = path.substringBeforeLast("/", "/")
-        val name = path.substringAfterLast("/")
-        val parent = findDoc(parentPath) ?: error("Parent not found: $parentPath")
+        val parentPath = path.trimEnd('/').substringBeforeLast("/", "")
+        val name = path.trimEnd('/').substringAfterLast("/")
+        val parent = findDoc(parentPath) ?: error("Parent not found")
         parent.createFile("text/plain", name) ?: error("Failed to create file")
+        Unit
     }
 
     override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
-        val doc = findDoc(path) ?: return@withContext
-        doc.delete()
+        val doc = findDoc(path) ?: return@withContext Unit
+        if (!doc.delete()) error("Delete failed")
+        Unit
     }
 
     override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
         val doc = findDoc(path) ?: error("Not found")
-        doc.renameTo(newName)
+        if (!doc.renameTo(newName)) error("Rename failed")
+        Unit
     }
 }
 
@@ -210,4 +230,5 @@ fun persistTreePermission(context: Context, uri: Uri) {
     val prefs = context.getSharedPreferences("termuxfm", Context.MODE_PRIVATE)
     prefs.edit().putString("saf_tree_uri", uri.toString()).apply()
 }
+
 
