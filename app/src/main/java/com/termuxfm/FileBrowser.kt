@@ -69,6 +69,7 @@ fun SafSetupScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileBrowserScreen(
     storage: StorageProvider,
