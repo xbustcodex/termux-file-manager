@@ -69,69 +69,237 @@ fun ensureLegacyWorkspaceExists(rootPath: String = "/sdcard/TermuxProjects") {
 /**
  * Legacy /sdcard provider (non-root fallback).
  */
-class LegacyFileStorageProvider(
-    private val rootPath: String = "/sdcard/TermuxProjects"
-) : StorageProvider {
+class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider {
+
+    override fun isReady(): Boolean = File(rootPath).exists()
 
     private fun resolve(path: String): File {
-        val clean = path.trim()
-        return if (clean.isEmpty() || clean == "/") {
-            File(rootPath)
-        } else {
-            File(rootPath, clean.trimStart('/'))
+        val clean = path.trimStart('/')
+        return if (clean.isBlank()) File(rootPath) else File(rootPath, clean)
+    }
+
+    // --- Permission helpers -------------------------------------------------
+
+    private fun tryFixFilePermissions(file: File): Boolean {
+        // Only attempt if we actually have a file on disk
+        if (!file.exists()) return false
+
+        return try {
+            // Root-based chmod. On non-root devices this will just fail and we fall back.
+            val cmd = "chmod 664 '${file.absolutePath}'"
+            val process = ProcessBuilder("su", "-c", cmd)
+                .redirectErrorStream(true)
+                .start()
+            val code = process.waitFor()
+            code == 0
+        } catch (e: Exception) {
+            false
         }
     }
 
-    override fun isReady(): Boolean {
-        return File(rootPath).exists()
+    private fun tryFixDirPermissions(dir: File): Boolean {
+        if (!dir.exists()) return false
+
+        return try {
+            val cmd = "chmod 775 '${dir.absolutePath}'"
+            val process = ProcessBuilder("su", "-c", cmd)
+                .redirectErrorStream(true)
+                .start()
+            val code = process.waitFor()
+            code == 0
+        } catch (e: Exception) {
+            false
+        }
     }
+
+    private fun ensureReadable(file: File): Boolean {
+        if (file.canRead()) return true
+        // Try root chmod and then re-check
+        if (tryFixFilePermissions(file)) {
+            return file.canRead()
+        }
+        return false
+    }
+
+    private fun ensureWritable(file: File): Boolean {
+        if (file.canWrite()) return true
+        if (tryFixFilePermissions(file)) {
+            return file.canWrite()
+        }
+        return false
+    }
+
+    private fun ensureDirWritable(dir: File): Boolean {
+        if (dir.canWrite()) return true
+        if (tryFixDirPermissions(dir)) {
+            return dir.canWrite()
+        }
+        return false
+    }
+
+    // --- StorageProvider implementation -------------------------------------
 
     override suspend fun list(path: String): List<FileItem> = withContext(Dispatchers.IO) {
         val dir = resolve(path)
+
+        if (!dir.exists() || !dir.isDirectory) return@withContext emptyList()
+
+        // If we can't read the directory, try to fix its permissions
+        if (!dir.canRead()) {
+            if (!ensureReadable(dir)) {
+                return@withContext emptyList()
+            }
+        }
+
         val files = dir.listFiles()?.map {
             FileItem(
                 name = it.name,
                 path = (path.trimEnd('/') + "/" + it.name).replace("//", "/"),
                 isDir = it.isDirectory,
                 size = if (it.isFile) it.length() else null,
-                modified = it.lastModified()
+                lastModified = it.lastModified()
             )
         } ?: emptyList()
 
-        files.sortedWith(compareBy<FileItem> { !it.isDir }.thenBy { it.name.lowercase() })
+        files.sortedWith(
+            compareBy<FileItem> { !it.isDir }.thenBy { it.name.lowercase() }
+        )
     }
 
-    override suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
-        resolve(path).takeIf { it.exists() }?.readText() ?: ""
+    override suspend fun readFile(path: String): String? = withContext(Dispatchers.IO) {
+        val file = resolve(path)
+
+        if (!file.exists() || !file.isFile) return@withContext null
+
+        // Normal case: readable already
+        if (file.canRead()) {
+            return@withContext file.readText()
+        }
+
+        // Auto-fix: try chmod via su, then retry once
+        if (ensureReadable(file)) {
+            return@withContext file.readText()
+        }
+
+        // Still not readable – give up, editor will show error
+        null
     }
 
     override suspend fun writeFile(path: String, content: String) = withContext(Dispatchers.IO) {
-        val f = resolve(path)
-        f.parentFile?.mkdirs()
-        f.writeText(content)
-    }
+        val file = resolve(path)
+        val parent = file.parentFile
 
-    override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
-        resolve(path).mkdirs()
+        // Make sure parent directory is writable first
+        if (parent != null && parent.exists() && !ensureDirWritable(parent)) {
+            error("Write failed: parent directory not writable")
+        }
+
+        try {
+            if (!file.exists()) {
+                file.createNewFile()
+            }
+
+            if (!ensureWritable(file)) {
+                error("Write failed: file not writable")
+            }
+
+            file.writeText(content)
+        } catch (e: IOException) {
+            // Last-resort: try auto-fix once more and retry write
+            if (ensureWritable(file)) {
+                file.writeText(content)
+            } else {
+                throw e
+            }
+        }
+
         Unit
     }
 
-    override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
-        val f = resolve(path)
-        f.parentFile?.mkdirs()
-        if (!f.exists()) f.createNewFile()
+    override suspend fun createFile(path: String, name: String) = withContext(Dispatchers.IO) {
+        val dir = resolve(path)
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                error("Create file failed: could not create directory")
+            }
+        }
+
+        if (!ensureDirWritable(dir)) {
+            error("Create file failed: directory not writable")
+        }
+
+        val newFile = File(dir, name)
+        if (!newFile.exists()) {
+            if (!newFile.createNewFile()) {
+                error("Create file failed")
+            }
+        }
+
+        // Make sure the new file is writable for future edits
+        ensureWritable(newFile)
+
+        Unit
+    }
+
+    override suspend fun createFolder(path: String, name: String) = withContext(Dispatchers.IO) {
+        val dir = resolve(path)
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                error("Create folder failed: could not create base directory")
+            }
+        }
+
+        if (!ensureDirWritable(dir)) {
+            error("Create folder failed: directory not writable")
+        }
+
+        val newDir = File(dir, name)
+        if (!newDir.exists()) {
+            if (!newDir.mkdirs()) {
+                error("Create folder failed")
+            }
+        }
+
+        // Fix permissions on the new folder so it’s usable
+        ensureDirWritable(newDir)
+
         Unit
     }
 
     override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
-        resolve(path).deleteRecursively()
+        val f = resolve(path)
+
+        fun deleteRecursively(file: File): Boolean {
+            if (file.isDirectory) {
+                file.listFiles()?.forEach { child ->
+                    if (!deleteRecursively(child)) return false
+                }
+            }
+            if (!file.canWrite()) {
+                // Try to unlock before delete
+                ensureWritable(file)
+            }
+            return file.delete()
+        }
+
+        if (!deleteRecursively(f)) {
+            error("Delete failed")
+        }
+
         Unit
     }
 
     override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
         val f = resolve(path)
-        val target = File(f.parentFile, newName)
+        val parent = f.parentFile ?: error("Rename failed: no parent directory")
+
+        if (!ensureDirWritable(parent)) {
+            error("Rename failed: parent directory not writable")
+        }
+
+        val target = File(parent, newName)
         if (!f.renameTo(target)) error("Rename failed")
+
         Unit
     }
 }
