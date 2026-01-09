@@ -177,3 +177,22 @@ private fun resolveScriptAbsolutePath(
         else -> null
     }
 }
+fun detectScriptType(path: String): String {
+    val lower = path.lowercase()
+    return when {
+        lower.endsWith(".sh")  -> "bash"
+        lower.endsWith(".py")  -> "python"
+        lower.endsWith(".js")  -> "node"
+        lower.endsWith(".php") -> "php"
+        else -> "unknown"
+    }
+}
+
+fun defaultShebangFor(type: String): String? =
+    when (type) {
+        "bash"   -> "#!/data/data/com.termux/files/usr/bin/bash"
+        "python" -> "#!/data/data/com.termux/files/usr/bin/python"
+        "node"   -> "#!/data/data/com.termux/files/usr/bin/node"
+        "php"    -> "#!/data/data/com.termux/files/usr/bin/php"
+        else -> null
+    }
