@@ -67,7 +67,7 @@ fun ensureLegacyWorkspaceExists(rootPath: String = "/sdcard/TermuxProjects") {
 }
 
 /**
- * Legacy /sdcard provider (non-root fallback).
+ * Legacy /sdcard provider (non-root fallback, with optional root chmod).
  */
 class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider {
 
@@ -81,11 +81,9 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
     // --- Permission helpers -------------------------------------------------
 
     private fun tryFixFilePermissions(file: File): Boolean {
-        // Only attempt if we actually have a file on disk
         if (!file.exists()) return false
 
         return try {
-            // Root-based chmod. On non-root devices this will just fail and we fall back.
             val cmd = "chmod 664 '${file.absolutePath}'"
             val process = ProcessBuilder("su", "-c", cmd)
                 .redirectErrorStream(true)
@@ -114,7 +112,6 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
 
     private fun ensureReadable(file: File): Boolean {
         if (file.canRead()) return true
-        // Try root chmod and then re-check
         if (tryFixFilePermissions(file)) {
             return file.canRead()
         }
@@ -157,7 +154,7 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
                 path = (path.trimEnd('/') + "/" + it.name).replace("//", "/"),
                 isDir = it.isDirectory,
                 size = if (it.isFile) it.length() else null,
-                lastModified = it.lastModified()
+                modified = it.lastModified()
             )
         } ?: emptyList()
 
@@ -166,10 +163,10 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
         )
     }
 
-    override suspend fun readFile(path: String): String? = withContext(Dispatchers.IO) {
+    override suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
         val file = resolve(path)
 
-        if (!file.exists() || !file.isFile) return@withContext null
+        if (!file.exists() || !file.isFile) return@withContext ""
 
         // Normal case: readable already
         if (file.canRead()) {
@@ -182,7 +179,7 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
         }
 
         // Still not readable – give up, editor will show error
-        null
+        ""
     }
 
     override suspend fun writeFile(path: String, content: String) = withContext(Dispatchers.IO) {
@@ -204,7 +201,7 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
             }
 
             file.writeText(content)
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             // Last-resort: try auto-fix once more and retry write
             if (ensureWritable(file)) {
                 file.writeText(content)
@@ -216,8 +213,16 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
         Unit
     }
 
-    override suspend fun createFile(path: String, name: String) = withContext(Dispatchers.IO) {
-        val dir = resolve(path)
+    /**
+     * Path here is the full path INCLUDING the new file name,
+     * e.g. "Notes/todo.txt" – same behaviour as SafStorageProvider.
+     */
+    override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
+        val clean = path.trimEnd('/')
+        val parentRel = clean.substringBeforeLast("/", "")
+        val name = clean.substringAfterLast("/")
+
+        val dir = resolve(parentRel)
         if (!dir.exists()) {
             if (!dir.mkdirs()) {
                 error("Create file failed: could not create directory")
@@ -241,8 +246,16 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
         Unit
     }
 
-    override suspend fun createFolder(path: String, name: String) = withContext(Dispatchers.IO) {
-        val dir = resolve(path)
+    /**
+     * Path here is the full path for the folder,
+     * e.g. "Notes/NewFolder" – same behaviour as SafStorageProvider.
+     */
+    override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
+        val clean = path.trimEnd('/')
+        val parentRel = clean.substringBeforeLast("/", "")
+        val name = clean.substringAfterLast("/")
+
+        val dir = resolve(parentRel)
         if (!dir.exists()) {
             if (!dir.mkdirs()) {
                 error("Create folder failed: could not create base directory")
@@ -398,5 +411,3 @@ fun persistTreePermission(context: Context, uri: Uri) {
     val prefs = context.getSharedPreferences("termuxfm", Context.MODE_PRIVATE)
     prefs.edit().putString("saf_tree_uri", uri.toString()).apply()
 }
-
-
