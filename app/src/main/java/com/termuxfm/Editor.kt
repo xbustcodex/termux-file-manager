@@ -1,10 +1,23 @@
-package com.termuxfm 
+package com.termuxfm
 
-import androidx.compose.material3.ExperimentalMaterial3Api
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -29,36 +42,35 @@ fun EditorScreen(
     val fileName = remember(filePath) { filePath.trimEnd('/').substringAfterLast("/") }
 
     LaunchedEffect(filePath) {
-    loading = true
-    status = null
-    try {
-        val loaded = storage.readFile(filePath)
-        val type = detectScriptType(filePath)
-        val shebang = defaultShebangFor(type)
+        loading = true
+        status = null
+        try {
+            val loaded = storage.readFile(filePath)
+            val type = detectScriptType(filePath)
+            val shebang = defaultShebangFor(type)
 
-        content = if (shebang != null) {
-            when {
-                // Brand-new or empty script → inject shebang
-                loaded.isBlank() -> shebang + "\n\n"
+            content = if (shebang != null) {
+                when {
+                    // Brand-new or empty script → inject shebang
+                    loaded.isBlank() -> shebang + "\n\n"
 
-                // No existing shebang at the top → prepend ours
-                !loaded.startsWith("#!") -> shebang + "\n" + loaded
+                    // No existing shebang at the top → prepend ours
+                    !loaded.startsWith("#!") -> shebang + "\n" + loaded
 
-                // Already has a shebang → leave as-is
-                else -> loaded
+                    // Already has a shebang → leave as-is
+                    else -> loaded
+                }
+            } else {
+                // Not a known script type → just load normally
+                loaded
             }
-        } else {
-            // Not a known script type → just load normally
-            loaded
+        } catch (e: Exception) {
+            status = "Read error: ${e.message}"
+            content = ""
+        } finally {
+            loading = false
         }
-    } catch (e: Exception) {
-        status = "Read error: ${e.message}"
-        content = ""
-    } finally {
-        loading = false
     }
-}
-
 
     Scaffold(
         topBar = {
@@ -113,7 +125,9 @@ fun EditorScreen(
                 value = content,
                 onValueChange = { content = it },
                 modifier = Modifier.fillMaxSize(),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace
+                ),
                 singleLine = false
             )
         }
@@ -139,6 +153,7 @@ fun EditorScreen(
                 title = { Text("Run script") },
                 text = { Text("What do you want to do with:\n$filePath") },
                 confirmButton = {
+                    // Normal user run in Termux
                     TextButton(onClick = {
                         TermuxRunner.runScriptInTerminal(
                             context = context,
@@ -151,17 +166,37 @@ fun EditorScreen(
                     }
                 },
                 dismissButton = {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = {
-                            TermuxRunner.runScriptInBackground(
-                                context = context,
-                                absolutePath = absPath,
-                                workDir = workDir
-                            )
-                            showRunDialog = false
-                        }) {
-                            Text("Run in background")
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            TextButton(onClick = {
+                                // Run with su in Termux
+                                TermuxRunner.runScriptWithSuInTerminal(
+                                    context = context,
+                                    absolutePath = absPath,
+                                    workDir = workDir
+                                )
+                                showRunDialog = false
+                            }) {
+                                Text("Run with su")
+                            }
+
+                            TextButton(onClick = {
+                                // Background, normal user
+                                TermuxRunner.runScriptInBackground(
+                                    context = context,
+                                    absolutePath = absPath,
+                                    workDir = workDir
+                                )
+                                showRunDialog = false
+                            }) {
+                                Text("Background")
+                            }
                         }
+
                         TextButton(onClick = { showRunDialog = false }) {
                             Text("Cancel")
                         }
@@ -196,6 +231,7 @@ private fun resolveScriptAbsolutePath(
         else -> null
     }
 }
+
 fun detectScriptType(path: String): String {
     val lower = path.lowercase()
     return when {
