@@ -1,5 +1,6 @@
-package com.termuxfm
+package com.termuxfm 
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -10,6 +11,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(
     storage: StorageProvider,
