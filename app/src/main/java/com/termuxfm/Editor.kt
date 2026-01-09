@@ -29,17 +29,36 @@ fun EditorScreen(
     val fileName = remember(filePath) { filePath.trimEnd('/').substringAfterLast("/") }
 
     LaunchedEffect(filePath) {
-        loading = true
-        status = null
-        try {
-            content = storage.readFile(filePath)
-        } catch (e: Exception) {
-            status = "Read error: ${e.message}"
-            content = ""
-        } finally {
-            loading = false
+    loading = true
+    status = null
+    try {
+        val loaded = storage.readFile(filePath)
+        val type = detectScriptType(filePath)
+        val shebang = defaultShebangFor(type)
+
+        content = if (shebang != null) {
+            when {
+                // Brand-new or empty script → inject shebang
+                loaded.isBlank() -> shebang + "\n\n"
+
+                // No existing shebang at the top → prepend ours
+                !loaded.startsWith("#!") -> shebang + "\n" + loaded
+
+                // Already has a shebang → leave as-is
+                else -> loaded
+            }
+        } else {
+            // Not a known script type → just load normally
+            loaded
         }
+    } catch (e: Exception) {
+        status = "Read error: ${e.message}"
+        content = ""
+    } finally {
+        loading = false
     }
+}
+
 
     Scaffold(
         topBar = {
