@@ -7,6 +7,8 @@ Designed with speed, simplicity, and full Termux integration, this tool gives yo
 This is not a generic file manager.
 This is your new Termux weapon.
 
+
+
 ⭐ Why This File Manager Is Different
 
 Termux users need more than a basic browser — you need:
@@ -21,6 +23,8 @@ Termux users need more than a basic browser — you need:
 ✔ No ads, no tracking, no nonsense
 
 This app delivers ALL of that in one lightweight package.
+
+
 
 🔥 Core Features
 🧭 Full File Manager for Termux
@@ -37,6 +41,7 @@ Rename, delete, and manage files like a desktop experience
 
 Instantly navigate directories with smooth Compose UI
 
+
 📝 Built-In Script Editor
 
 A fast, minimal, distraction-free editor for:
@@ -51,6 +56,7 @@ PHP (.php)
 
 Any plain text
 
+
 Features:
 ✔ Clean Material layout
 ✔ Instant Save
@@ -63,6 +69,7 @@ Every runnable script shows a Run button.
 
 Choose how you want to execute:
 
+
 🏁 Run in Termux Terminal
 
 Opens Termux in a new or existing session and runs the script live.
@@ -74,6 +81,7 @@ Installers
 Setup scripts
 
 Tools that require interaction
+
 
 ⚙️ Run in Background
 
@@ -91,6 +99,7 @@ Payload generators
 
 Updates
 
+
 🔐 Advanced Permission System
 
 Auto-detects root and unlocks full access
@@ -100,6 +109,8 @@ SAF picker ensures Android 12+ can access Termux Home
 Legacy mode /sdcard/TermuxProjects for full write access
 
 Smart error detection: EACCES, missing permissions, restricted folders
+
+
 
 🧰 Who This App Is Made For
 
@@ -119,6 +130,8 @@ This is a must-have tool if you are:
 
 If you use Termux even once per day — you want this.
 
+
+
 💾 Download & Updates
 📥 Latest Version
 
@@ -128,6 +141,8 @@ https://github.com/xbustcodex/termux-file-manager/releases
 This is where you will always find the newest builds.
 
 Go there anytime to download the newest version.
+
+
 
 🗂️ Changelog
 v1.0 – Initial Release
@@ -153,9 +168,8 @@ Automatic path resolution
 Material 3 interface
 
 
-🧩 Upcoming Features (Upgrade Roadmap)
 
-We saved your roadmap so you can keep building:
+🧩 Upcoming Features (Upgrade Roadmap)
 
 🔜 Next major upgrades:
 
@@ -175,9 +189,13 @@ Plugin system
 
 Script templates (Bash/Python)
 
+
+
 📜 License
 
 MIT License — free to modify & redistribute.
+
+
 
 ❤️ Credits
 
