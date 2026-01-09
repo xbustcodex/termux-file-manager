@@ -186,6 +186,13 @@ fun FileBrowserScreen(
                     try {
                         val newPath = (path.trimEnd('/') + "/$name").replace("//", "/")
                         storage.createFile(newPath)
+                        // Auto-shebang for empty new scripts
+                        val type = detectScriptType(newPath)
+                        val shebang = defaultShebangFor(type)
+                        if (shebang != null) {
+                            storage.writeFile(newPath, shebang + "\n\n")
+                        }
+
                         refresh()
                     } catch (e: Exception) {
                         error = e.message ?: "Failed to create file"
