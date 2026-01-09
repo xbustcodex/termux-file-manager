@@ -1,4 +1,6 @@
 🚀 Termux File Manager – The Ultimate Script Launcher & File Controller for Termux
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 Termux File Manager is a powerful, modern Android file manager built specifically for Termux developers, hackers, penetration testers, automation enthusiasts, and power users.
 
@@ -7,7 +9,7 @@ Designed with speed, simplicity, and full Termux integration, this tool gives yo
 This is not a generic file manager.
 This is your new Termux weapon.
 
-
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 ⭐ Why This File Manager Is Different
@@ -25,6 +27,7 @@ Termux users need more than a basic browser — you need:
 
 This app delivers ALL of that in one lightweight package.
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 🔥 Core Features
@@ -42,6 +45,9 @@ Rename, delete, and manage files like a desktop experience
 
 Instantly navigate directories with smooth Compose UI
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 
 📝 Built-In Script Editor
 
@@ -57,6 +63,8 @@ PHP (.php)
 
 Any plain text
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 Features:
 ✔ Clean Material layout
@@ -71,6 +79,9 @@ Every runnable script shows a Run button.
 Choose how you want to execute:
 
 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 🏁 Run in Termux Terminal
 
 Opens Termux in a new or existing session and runs the script live.
@@ -82,6 +93,10 @@ Installers
 Setup scripts
 
 Tools that require interaction
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 
 ⚙️ Run in Background
@@ -100,6 +115,8 @@ Payload generators
 
 Updates
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 🔐 Advanced Permission System
 
@@ -111,6 +128,8 @@ Legacy mode /sdcard/TermuxProjects for full write access
 
 Smart error detection: EACCES, missing permissions, restricted folders
 
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 🧰 Who This App Is Made For
@@ -132,6 +151,8 @@ This is a must-have tool if you are:
 If you use Termux even once per day — you want this.
 
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 💾 Download & Updates
 📥 Latest Version
@@ -144,6 +165,7 @@ This is where you will always find the newest builds.
 Go there anytime to download the newest version.
 
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 🗂️ Changelog
 v1.0 – Initial Release
@@ -169,6 +191,8 @@ Automatic path resolution
 Material 3 interface
 
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 🧩 Upcoming Features (Upgrade Roadmap)
 
@@ -191,11 +215,16 @@ Plugin system
 Script templates (Bash/Python)
 
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 
 📜 License
 
 MIT License — free to modify & redistribute.
 
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 ❤️ Credits
