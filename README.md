@@ -9,6 +9,7 @@ This is your new Termux weapon.
 
 
 
+
 ⭐ Why This File Manager Is Different
 
 Termux users need more than a basic browser — you need:
