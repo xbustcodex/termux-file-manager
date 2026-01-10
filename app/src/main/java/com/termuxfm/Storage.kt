@@ -67,7 +67,7 @@ fun ensureLegacyWorkspaceExists(rootPath: String = "/sdcard/TermuxProjects") {
 }
 
 /**
- * Legacy /sdcard provider (non-root fallback, with optional root chmod).
+ * Legacy /sdcard provider (non-root fallback).
  */
 class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider {
 
@@ -141,11 +141,8 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
 
         if (!dir.exists() || !dir.isDirectory) return@withContext emptyList()
 
-        // If we can't read the directory, try to fix its permissions
         if (!dir.canRead()) {
-            if (!ensureReadable(dir)) {
-                return@withContext emptyList()
-            }
+            if (!ensureReadable(dir)) return@withContext emptyList()
         }
 
         val files = dir.listFiles()?.map {
@@ -166,27 +163,25 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
     override suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
         val file = resolve(path)
 
-        if (!file.exists() || !file.isFile) return@withContext ""
-
-        // Normal case: readable already
-        if (file.canRead()) {
-            return@withContext file.readText()
+        if (!file.exists() || !file.isFile) {
+            error("File not found")
         }
 
-        // Auto-fix: try chmod via su, then retry once
-        if (ensureReadable(file)) {
-            return@withContext file.readText()
+        if (!ensureReadable(file)) {
+            error("Permission denied")
         }
 
-        // Still not readable – give up, editor will show error
-        ""
+        try {
+            file.readText()
+        } catch (e: Exception) {
+            error("Read failed: ${e.message}")
+        }
     }
 
     override suspend fun writeFile(path: String, content: String) = withContext(Dispatchers.IO) {
         val file = resolve(path)
         val parent = file.parentFile
 
-        // Make sure parent directory is writable first
         if (parent != null && parent.exists() && !ensureDirWritable(parent)) {
             error("Write failed: parent directory not writable")
         }
@@ -202,81 +197,47 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
 
             file.writeText(content)
         } catch (e: Exception) {
-            // Last-resort: try auto-fix once more and retry write
             if (ensureWritable(file)) {
                 file.writeText(content)
             } else {
                 throw e
             }
         }
-
-        Unit
     }
 
-    /**
-     * Path here is the full path INCLUDING the new file name,
-     * e.g. "Notes/todo.txt" – same behaviour as SafStorageProvider.
-     */
     override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
-        val clean = path.trimEnd('/')
-        val parentRel = clean.substringBeforeLast("/", "")
-        val name = clean.substringAfterLast("/")
+        val file = resolve(path)
+        val dir = file.parentFile
 
-        val dir = resolve(parentRel)
-        if (!dir.exists()) {
+        if (dir != null && !dir.exists()) {
             if (!dir.mkdirs()) {
                 error("Create file failed: could not create directory")
             }
         }
 
-        if (!ensureDirWritable(dir)) {
+        if (dir != null && !ensureDirWritable(dir)) {
             error("Create file failed: directory not writable")
         }
 
-        val newFile = File(dir, name)
-        if (!newFile.exists()) {
-            if (!newFile.createNewFile()) {
+        if (!file.exists()) {
+            if (!file.createNewFile()) {
                 error("Create file failed")
             }
         }
 
-        // Make sure the new file is writable for future edits
-        ensureWritable(newFile)
-
-        Unit
+        ensureWritable(file)
     }
 
-    /**
-     * Path here is the full path for the folder,
-     * e.g. "Notes/NewFolder" – same behaviour as SafStorageProvider.
-     */
     override suspend fun createFolder(path: String) = withContext(Dispatchers.IO) {
-        val clean = path.trimEnd('/')
-        val parentRel = clean.substringBeforeLast("/", "")
-        val name = clean.substringAfterLast("/")
+        val dir = resolve(path)
 
-        val dir = resolve(parentRel)
         if (!dir.exists()) {
             if (!dir.mkdirs()) {
-                error("Create folder failed: could not create base directory")
-            }
-        }
-
-        if (!ensureDirWritable(dir)) {
-            error("Create folder failed: directory not writable")
-        }
-
-        val newDir = File(dir, name)
-        if (!newDir.exists()) {
-            if (!newDir.mkdirs()) {
                 error("Create folder failed")
             }
         }
 
-        // Fix permissions on the new folder so it’s usable
-        ensureDirWritable(newDir)
-
-        Unit
+        ensureDirWritable(dir)
     }
 
     override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
@@ -289,7 +250,6 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
                 }
             }
             if (!file.canWrite()) {
-                // Try to unlock before delete
                 ensureWritable(file)
             }
             return file.delete()
@@ -298,8 +258,6 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
         if (!deleteRecursively(f)) {
             error("Delete failed")
         }
-
-        Unit
     }
 
     override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
@@ -312,8 +270,18 @@ class LegacyFileStorageProvider(private val rootPath: String) : StorageProvider 
 
         val target = File(parent, newName)
         if (!f.renameTo(target)) error("Rename failed")
+    }
 
-        Unit
+    /** Binary read helper for Hex Viewer. */
+    suspend fun readBinary(path: String): ByteArray? = withContext(Dispatchers.IO) {
+        val file = resolve(path)
+        if (!file.exists() || !file.isFile) return@withContext null
+        if (!ensureReadable(file)) return@withContext null
+        try {
+            file.readBytes()
+        } catch (e: Exception) {
+            null
+        }
     }
 }
 
@@ -361,8 +329,8 @@ class SafStorageProvider(
     }
 
     override suspend fun readFile(path: String): String = withContext(Dispatchers.IO) {
-        val doc = findDoc(path) ?: return@withContext ""
-        val input = context.contentResolver.openInputStream(doc.uri) ?: return@withContext ""
+        val doc = findDoc(path) ?: error("File not found")
+        val input = context.contentResolver.openInputStream(doc.uri) ?: error("Cannot open stream")
         input.bufferedReader().use { it.readText() }
     }
 
@@ -378,7 +346,6 @@ class SafStorageProvider(
         val name = path.trimEnd('/').substringAfterLast("/")
         val parent = findDoc(parentPath) ?: error("Parent not found")
         parent.createDirectory(name) ?: error("Failed to create folder")
-        Unit
     }
 
     override suspend fun createFile(path: String) = withContext(Dispatchers.IO) {
@@ -386,19 +353,27 @@ class SafStorageProvider(
         val name = path.trimEnd('/').substringAfterLast("/")
         val parent = findDoc(parentPath) ?: error("Parent not found")
         parent.createFile("text/plain", name) ?: error("Failed to create file")
-        Unit
     }
 
     override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
-        val doc = findDoc(path) ?: return@withContext Unit
+        val doc = findDoc(path) ?: return@withContext
         if (!doc.delete()) error("Delete failed")
-        Unit
     }
 
     override suspend fun rename(path: String, newName: String) = withContext(Dispatchers.IO) {
         val doc = findDoc(path) ?: error("Not found")
         if (!doc.renameTo(newName)) error("Rename failed")
-        Unit
+    }
+
+    /** Binary read helper for Hex Viewer. */
+    suspend fun readBinary(path: String): ByteArray? = withContext(Dispatchers.IO) {
+        val doc = findDoc(path) ?: return@withContext null
+        val input = context.contentResolver.openInputStream(doc.uri) ?: return@withContext null
+        try {
+            input.use { it.readBytes() }
+        } catch (e: Exception) {
+            null
+        }
     }
 }
 
