@@ -85,6 +85,7 @@ fun FileBrowserScreen(
 
     var showNewFileDialog by remember { mutableStateOf(false) }
     var showNewFolderDialog by remember { mutableStateOf(false) }
+    var showNewScriptDialog by remember { mutableStateOf(false) }
     var showRenameDialogFor by remember { mutableStateOf<FileItem?>(null) }
     var showDeleteDialogFor by remember { mutableStateOf<FileItem?>(null) }
 
@@ -107,7 +108,13 @@ fun FileBrowserScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Path: $path", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = {
+                    Text(
+                        "Path: $path",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 actions = {
                     IconButton(onClick = { refresh() }) {
                         Text("⟳")
@@ -117,6 +124,9 @@ fun FileBrowserScreen(
         },
         floatingActionButton = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                FloatingActionButton(onClick = { showNewScriptDialog = true }) {
+                    Text("+S") // New Script
+                }
                 FloatingActionButton(onClick = { showNewFolderDialog = true }) {
                     Text("+📁")
                 }
@@ -176,6 +186,7 @@ fun FileBrowserScreen(
         }
     }
 
+    // -------- New Plain File --------
     if (showNewFileDialog) {
         NamePromptDialog(
             title = "New File",
@@ -186,6 +197,7 @@ fun FileBrowserScreen(
                     try {
                         val newPath = (path.trimEnd('/') + "/$name").replace("//", "/")
                         storage.createFile(newPath)
+
                         // Auto-shebang for empty new scripts
                         val type = detectScriptType(newPath)
                         val shebang = defaultShebangFor(type)
@@ -194,6 +206,7 @@ fun FileBrowserScreen(
                         }
 
                         refresh()
+                        onOpenFile(newPath)
                     } catch (e: Exception) {
                         error = e.message ?: "Failed to create file"
                     } finally {
@@ -204,6 +217,7 @@ fun FileBrowserScreen(
         )
     }
 
+    // -------- New Folder --------
     if (showNewFolderDialog) {
         NamePromptDialog(
             title = "New Folder",
@@ -225,6 +239,43 @@ fun FileBrowserScreen(
         )
     }
 
+    // -------- New Script (Templates) --------
+    if (showNewScriptDialog) {
+        ScriptTemplateDialog(
+            onDismiss = { showNewScriptDialog = false },
+            onSelectTemplate = { type ->
+                scope.launch {
+                    try {
+                        val defaultName = when (type) {
+                            "bash" -> "script.sh"
+                            "python" -> "script.py"
+                            "node" -> "script.js"
+                            "php" -> "script.php"
+                            else -> "script.txt"
+                        }
+
+                        val newPath = (path.trimEnd('/') + "/$defaultName").replace("//", "/")
+
+                        storage.createFile(newPath)
+
+                        val template = scriptTemplateFor(type)
+                        if (template.isNotEmpty()) {
+                            storage.writeFile(newPath, template)
+                        }
+
+                        refresh()
+                        onOpenFile(newPath)
+                    } catch (e: Exception) {
+                        error = e.message ?: "Failed to create script"
+                    } finally {
+                        showNewScriptDialog = false
+                    }
+                }
+            }
+        )
+    }
+
+    // -------- Rename --------
     if (showRenameDialogFor != null) {
         val item = showRenameDialogFor!!
         NamePromptDialog(
@@ -247,6 +298,7 @@ fun FileBrowserScreen(
         )
     }
 
+    // -------- Delete --------
     if (showDeleteDialogFor != null) {
         val item = showDeleteDialogFor!!
         AlertDialog(
@@ -339,3 +391,64 @@ private fun NamePromptDialog(
     )
 }
 
+/**
+ * Dialog that lets the user choose which script template to create.
+ */
+@Composable
+private fun ScriptTemplateDialog(
+    onDismiss: () -> Unit,
+    onSelectTemplate: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Script") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Choose a script type:")
+                Button(onClick = { onSelectTemplate("bash") }) { Text("Bash (.sh)") }
+                Button(onClick = { onSelectTemplate("python") }) { Text("Python (.py)") }
+                Button(onClick = { onSelectTemplate("node") }) { Text("Node (.js)") }
+                Button(onClick = { onSelectTemplate("php") }) { Text("PHP (.php)") }
+                OutlinedButton(onClick = { onSelectTemplate("empty") }) { Text("Empty file") }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
+}
+
+/**
+ * Returns a full script template (shebang + minimal body) for the given type.
+ * Relies on defaultShebangFor(...) from Editor.kt.
+ */
+fun scriptTemplateFor(type: String): String {
+    val shebang = defaultShebangFor(type) ?: return ""
+    val body = when (type) {
+        "bash" -> """
+            
+            echo "Hello from new bash script!"
+        """.trimIndent()
+
+        "python" -> """
+            
+            print("Hello from new Python script!")
+        """.trimIndent()
+
+        "node" -> """
+            
+            console.log("Hello from new Node script!");
+        """.trimIndent()
+
+        "php" -> """
+            
+            <?php
+            echo "Hello from new PHP script!";
+            ?>
+        """.trimIndent()
+
+        else -> ""
+    }
+    return shebang + body
+}
