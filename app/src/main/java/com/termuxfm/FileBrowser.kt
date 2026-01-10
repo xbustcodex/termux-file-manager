@@ -1,36 +1,181 @@
 package com.termuxfm
 
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
+/**
+ * Root app composable with:
+ * - Left MT-style navigation drawer
+ * - Center content (FileBrowser / Editor)
+ * - Right Tools panel (hex viewer etc., coming soon)
+ */
 @Composable
 fun TermuxFileManagerApp(storage: StorageProvider) {
+    val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
     var currentPath by remember { mutableStateOf("/") }
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
 
-    if (selectedFilePath != null) {
-        EditorScreen(
-            storage = storage,
-            filePath = selectedFilePath!!,
-            onBack = { selectedFilePath = null }
-        )
-    } else {
-        FileBrowserScreen(
-            storage = storage,
-            path = currentPath,
-            onNavigate = { currentPath = it },
-            onOpenFile = { selectedFilePath = it }
-        )
+    var showToolsPanel by remember { mutableStateOf(false) }
+    var selectedDrawerIndex by remember { mutableStateOf(0) }
+
+    fun navigateTo(path: String) {
+        selectedFilePath = null
+        currentPath = path
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Termux File Manager",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Drawer items – MT Manager style (icons as emojis for now)
+                    NavigationDrawerItem(
+                        label = { Text("🏠 Home") },
+                        selected = selectedDrawerIndex == 0,
+                        onClick = {
+                            selectedDrawerIndex = 0
+                            navigateTo("/")
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("📂 /Scripts") },
+                        selected = selectedDrawerIndex == 1,
+                        onClick = {
+                            selectedDrawerIndex = 1
+                            navigateTo("/Scripts")
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("📁 Workspace root") },
+                        selected = selectedDrawerIndex == 2,
+                        onClick = {
+                            selectedDrawerIndex = 2
+                            navigateTo("/")
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Tools",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("🛠 Show tools panel") },
+                        selected = showToolsPanel,
+                        onClick = {
+                            showToolsPanel = !showToolsPanel
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Other",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("ℹ About (coming soon)") },
+                        selected = false,
+                        onClick = { /* placeholder */ },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+                }
+            }
+        }
+    ) {
+        Box(Modifier.fillMaxSize()) {
+
+            // Center content: browser or editor
+            if (selectedFilePath != null) {
+                EditorScreen(
+                    storage = storage,
+                    filePath = selectedFilePath!!,
+                    onBack = { selectedFilePath = null }
+                )
+            } else {
+                FileBrowserScreen(
+                    storage = storage,
+                    path = currentPath,
+                    onNavigate = { currentPath = it },
+                    onOpenFile = { selectedFilePath = it },
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onToggleTools = { showToolsPanel = !showToolsPanel }
+                )
+            }
+
+            // Right-side tools panel
+            ToolsPanel(
+                visible = showToolsPanel,
+                onClose = { showToolsPanel = false }
+            )
+        }
     }
 }
 
@@ -75,7 +220,9 @@ fun FileBrowserScreen(
     storage: StorageProvider,
     path: String,
     onNavigate: (String) -> Unit,
-    onOpenFile: (String) -> Unit
+    onOpenFile: (String) -> Unit,
+    onOpenDrawer: () -> Unit,
+    onToggleTools: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
@@ -85,7 +232,6 @@ fun FileBrowserScreen(
 
     var showNewFileDialog by remember { mutableStateOf(false) }
     var showNewFolderDialog by remember { mutableStateOf(false) }
-    var showNewScriptDialog by remember { mutableStateOf(false) }
     var showRenameDialogFor by remember { mutableStateOf<FileItem?>(null) }
     var showDeleteDialogFor by remember { mutableStateOf<FileItem?>(null) }
 
@@ -115,7 +261,18 @@ fun FileBrowserScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                 },
+                navigationIcon = {
+                    // MT-style hamburger to open drawer
+                    TextButton(onClick = onOpenDrawer) {
+                        Text("☰")
+                    }
+                },
                 actions = {
+                    // Tools panel toggle
+                    IconButton(onClick = onToggleTools) {
+                        Text("🛠")
+                    }
+                    // Refresh
                     IconButton(onClick = { refresh() }) {
                         Text("⟳")
                     }
@@ -124,12 +281,11 @@ fun FileBrowserScreen(
         },
         floatingActionButton = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                FloatingActionButton(onClick = { showNewScriptDialog = true }) {
-                    Text("+S") // New Script
-                }
+                // New folder
                 FloatingActionButton(onClick = { showNewFolderDialog = true }) {
                     Text("+📁")
                 }
+                // New file
                 FloatingActionButton(onClick = { showNewFileDialog = true }) {
                     Text("+📄")
                 }
@@ -151,7 +307,7 @@ fun FileBrowserScreen(
 
             if (loading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    androidx.compose.material3.CircularProgressIndicator()
                 }
             } else {
                 val canGoUp = path != "/"
@@ -166,7 +322,7 @@ fun FileBrowserScreen(
                             }
                             .padding(horizontal = 4.dp)
                     )
-                    Divider()
+                    androidx.compose.material3.Divider()
                 }
 
                 LazyColumn(Modifier.fillMaxSize()) {
@@ -179,14 +335,13 @@ fun FileBrowserScreen(
                             onRename = { showRenameDialogFor = item },
                             onDelete = { showDeleteDialogFor = item }
                         )
-                        Divider()
+                        androidx.compose.material3.Divider()
                     }
                 }
             }
         }
     }
 
-    // -------- New Plain File --------
     if (showNewFileDialog) {
         NamePromptDialog(
             title = "New File",
@@ -197,16 +352,13 @@ fun FileBrowserScreen(
                     try {
                         val newPath = (path.trimEnd('/') + "/$name").replace("//", "/")
                         storage.createFile(newPath)
-
                         // Auto-shebang for empty new scripts
                         val type = detectScriptType(newPath)
                         val shebang = defaultShebangFor(type)
                         if (shebang != null) {
                             storage.writeFile(newPath, shebang + "\n\n")
                         }
-
                         refresh()
-                        onOpenFile(newPath)
                     } catch (e: Exception) {
                         error = e.message ?: "Failed to create file"
                     } finally {
@@ -217,7 +369,6 @@ fun FileBrowserScreen(
         )
     }
 
-    // -------- New Folder --------
     if (showNewFolderDialog) {
         NamePromptDialog(
             title = "New Folder",
@@ -239,43 +390,6 @@ fun FileBrowserScreen(
         )
     }
 
-    // -------- New Script (Templates) --------
-    if (showNewScriptDialog) {
-        ScriptTemplateDialog(
-            onDismiss = { showNewScriptDialog = false },
-            onSelectTemplate = { type ->
-                scope.launch {
-                    try {
-                        val defaultName = when (type) {
-                            "bash" -> "script.sh"
-                            "python" -> "script.py"
-                            "node" -> "script.js"
-                            "php" -> "script.php"
-                            else -> "script.txt"
-                        }
-
-                        val newPath = (path.trimEnd('/') + "/$defaultName").replace("//", "/")
-
-                        storage.createFile(newPath)
-
-                        val template = scriptTemplateFor(type)
-                        if (template.isNotEmpty()) {
-                            storage.writeFile(newPath, template)
-                        }
-
-                        refresh()
-                        onOpenFile(newPath)
-                    } catch (e: Exception) {
-                        error = e.message ?: "Failed to create script"
-                    } finally {
-                        showNewScriptDialog = false
-                    }
-                }
-            }
-        )
-    }
-
-    // -------- Rename --------
     if (showRenameDialogFor != null) {
         val item = showRenameDialogFor!!
         NamePromptDialog(
@@ -298,10 +412,9 @@ fun FileBrowserScreen(
         )
     }
 
-    // -------- Delete --------
     if (showDeleteDialogFor != null) {
         val item = showDeleteDialogFor!!
-        AlertDialog(
+        androidx.compose.material3.AlertDialog(
             onDismissRequest = { showDeleteDialogFor = null },
             title = { Text("Delete") },
             text = { Text("Delete '${item.name}'? This cannot be undone.") },
@@ -364,7 +477,7 @@ private fun NamePromptDialog(
 ) {
     var text by remember { mutableStateOf(initial) }
 
-    AlertDialog(
+    androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -392,63 +505,86 @@ private fun NamePromptDialog(
 }
 
 /**
- * Dialog that lets the user choose which script template to create.
+ * Right-side tools panel – for now just shows "coming soon" items.
+ * Slides in/out from the right like MT Manager's tools drawer.
  */
 @Composable
-private fun ScriptTemplateDialog(
-    onDismiss: () -> Unit,
-    onSelectTemplate: (String) -> Unit
+fun ToolsPanel(
+    visible: Boolean,
+    onClose: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New Script") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Choose a script type:")
-                Button(onClick = { onSelectTemplate("bash") }) { Text("Bash (.sh)") }
-                Button(onClick = { onSelectTemplate("python") }) { Text("Python (.py)") }
-                Button(onClick = { onSelectTemplate("node") }) { Text("Node (.js)") }
-                Button(onClick = { onSelectTemplate("php") }) { Text("PHP (.php)") }
-                OutlinedButton(onClick = { onSelectTemplate("empty") }) { Text("Empty file") }
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInHorizontally(
+            initialOffsetX = { fullWidth -> fullWidth },
+            animationSpec = tween(durationMillis = 200)
+        ),
+        exit = slideOutHorizontally(
+            targetOffsetX = { fullWidth -> fullWidth },
+            animationSpec = tween(durationMillis = 200)
+        ),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            Surface(
+                tonalElevation = 3.dp,
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(260.dp)
+                    .align(Alignment.CenterEnd)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Tools",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        TextButton(onClick = onClose) {
+                            Text("Close")
+                        }
+                    }
+
+                    Text(
+                        "Quick utilities (roadmap):",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    ToolItem("Hex viewer", "Inspect binary files in hex (coming soon)")
+                    ToolItem("Permissions fixer", "Batch-fix chmod for scripts")
+                    ToolItem("APK signer", "Sign APKs directly from Termux storage")
+                    ToolItem("Log viewer", "Tail & filter log files")
+                    ToolItem("Script templates", "Generate starter scripts for new tools")
+                }
             }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
         }
-    )
+    }
 }
 
-/**
- * Returns a full script template (shebang + minimal body) for the given type.
- * Relies on defaultShebangFor(...) from Editor.kt.
- */
-fun scriptTemplateFor(type: String): String {
-    val shebang = defaultShebangFor(type) ?: return ""
-    val body = when (type) {
-        "bash" -> """
-            
-            echo "Hello from new bash script!"
-        """.trimIndent()
-
-        "python" -> """
-            
-            print("Hello from new Python script!")
-        """.trimIndent()
-
-        "node" -> """
-            
-            console.log("Hello from new Node script!");
-        """.trimIndent()
-
-        "php" -> """
-            
-            <?php
-            echo "Hello from new PHP script!";
-            ?>
-        """.trimIndent()
-
-        else -> ""
+@Composable
+private fun ToolItem(
+    title: String,
+    description: String
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
     }
-    return shebang + body
 }
