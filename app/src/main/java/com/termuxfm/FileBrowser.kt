@@ -42,17 +42,29 @@ import kotlin.math.min
 fun TermuxFileManagerApp(storage: StorageProvider) {
     var currentPath by remember { mutableStateOf("/") }
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
-    var hexFilePath by remember { mutableStateOf<String?>(null) }
+    var hexViewerPath by remember { mutableStateOf<String?>(null) }
+    var logViewerPath by remember { mutableStateOf<String?>(null) }
 
     when {
-        hexFilePath != null -> {
-            HexViewerScreen(
+        // Log viewer has highest priority when active
+        logViewerPath != null -> {
+            LogViewerScreen(
                 storage = storage,
-                filePath = hexFilePath!!,
-                onBack = { hexFilePath = null }
+                filePath = logViewerPath!!,
+                onBack = { logViewerPath = null }
             )
         }
 
+        // Hex viewer screen (you already wired this up)
+        hexViewerPath != null -> {
+            HexViewerScreen(
+                storage = storage,
+                filePath = hexViewerPath!!,
+                onBack = { hexViewerPath = null }
+            )
+        }
+
+        // Normal text/code editor
         selectedFilePath != null -> {
             EditorScreen(
                 storage = storage,
@@ -61,17 +73,20 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
             )
         }
 
+        // Default: file browser
         else -> {
             FileBrowserScreen(
                 storage = storage,
                 path = currentPath,
                 onNavigate = { currentPath = it },
                 onOpenFile = { selectedFilePath = it },
-                onOpenHexViewer = { hexFilePath = it }
+                onOpenHexViewer = { hexPath -> hexViewerPath = hexPath },
+                onOpenLogViewer = { logPath -> logViewerPath = logPath }
             )
         }
     }
 }
+
 
 // ---------------------------------------------------------
 // SAF setup
@@ -123,7 +138,8 @@ fun FileBrowserScreen(
     path: String,
     onNavigate: (String) -> Unit,
     onOpenFile: (String) -> Unit,
-    onOpenHexViewer: (String) -> Unit
+    onOpenHexViewer: (String) -> Unit,
+    onOpenLogViewer: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
@@ -262,6 +278,7 @@ fun FileBrowserScreen(
             currentPath = path,
             onClose = { showToolsPanel = false },
             onOpenHexViewer = onOpenHexViewer,
+            onOpenLogViewer = onOpenLogViewer,
             onOpenFile = onOpenFile
         )
     }
@@ -452,6 +469,7 @@ private fun ToolsPanel(
     currentPath: String,
     onClose: () -> Unit,
     onOpenHexViewer: (String) -> Unit,
+    onOpenLogViewer: (String) -> Unit,
     onOpenFile: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
