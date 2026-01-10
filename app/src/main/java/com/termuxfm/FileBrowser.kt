@@ -43,19 +43,11 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
     var currentPath by remember { mutableStateOf("/") }
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
     var hexViewerPath by remember { mutableStateOf<String?>(null) }
+    // (optional, for future) log viewer
     var logViewerPath by remember { mutableStateOf<String?>(null) }
 
     when {
-        // Log viewer has highest priority when active
-        logViewerPath != null -> {
-            LogViewerScreen(
-                storage = storage,
-                filePath = logViewerPath!!,
-                onBack = { logViewerPath = null }
-            )
-        }
-
-        // Hex viewer screen (you already wired this up)
+        // 1) Hex viewer has priority when active
         hexViewerPath != null -> {
             HexViewerScreen(
                 storage = storage,
@@ -64,7 +56,16 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
             )
         }
 
-        // Normal text/code editor
+        // 2) (future) log viewer
+        logViewerPath != null -> {
+            LogViewerScreen(   // stub for later
+                storage = storage,
+                filePath = logViewerPath!!,
+                onBack = { logViewerPath = null }
+            )
+        }
+
+        // 3) Normal text editor
         selectedFilePath != null -> {
             EditorScreen(
                 storage = storage,
@@ -73,19 +74,20 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
             )
         }
 
-        // Default: file browser
+        // 4) Default: file browser
         else -> {
             FileBrowserScreen(
                 storage = storage,
                 path = currentPath,
                 onNavigate = { currentPath = it },
                 onOpenFile = { selectedFilePath = it },
-                onOpenHexViewer = { hexPath -> hexViewerPath = hexPath },
-                onOpenLogViewer = { logPath -> logViewerPath = logPath }
+                onOpenHexViewer = { hexViewerPath = it },
+                onOpenLogViewer = { logViewerPath = it } // for later
             )
         }
     }
 }
+
 
 
 // ---------------------------------------------------------
