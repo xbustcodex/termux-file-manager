@@ -1,20 +1,11 @@
 package com.termuxfm
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,142 +13,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-/**
- * Root app composable with:
- * - Left MT-style navigation drawer
- * - Center content (FileBrowser / Editor)
- * - Right Tools panel (hex viewer etc., coming soon)
- */
 @Composable
 fun TermuxFileManagerApp(storage: StorageProvider) {
-    val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-
     var currentPath by remember { mutableStateOf("/") }
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
 
-    var showToolsPanel by remember { mutableStateOf(false) }
-    var selectedDrawerIndex by remember { mutableStateOf(0) }
-
-    fun navigateTo(path: String) {
-        selectedFilePath = null
-        currentPath = path
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                Column(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "Termux File Manager",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Drawer items – MT Manager style (icons as emojis for now)
-                    NavigationDrawerItem(
-                        label = { Text("🏠 Home") },
-                        selected = selectedDrawerIndex == 0,
-                        onClick = {
-                            selectedDrawerIndex = 0
-                            navigateTo("/")
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text("📂 /Scripts") },
-                        selected = selectedDrawerIndex == 1,
-                        onClick = {
-                            selectedDrawerIndex = 1
-                            navigateTo("/Scripts")
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text("📁 Workspace root") },
-                        selected = selectedDrawerIndex == 2,
-                        onClick = {
-                            selectedDrawerIndex = 2
-                            navigateTo("/")
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Tools",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text("🛠 Show tools panel") },
-                        selected = showToolsPanel,
-                        onClick = {
-                            showToolsPanel = !showToolsPanel
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Other",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text("ℹ About (coming soon)") },
-                        selected = false,
-                        onClick = { /* placeholder */ },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                }
-            }
-        }
-    ) {
-        Box(Modifier.fillMaxSize()) {
-
-            // Center content: browser or editor
-            if (selectedFilePath != null) {
-                EditorScreen(
-                    storage = storage,
-                    filePath = selectedFilePath!!,
-                    onBack = { selectedFilePath = null }
-                )
-            } else {
-                FileBrowserScreen(
-                    storage = storage,
-                    path = currentPath,
-                    onNavigate = { currentPath = it },
-                    onOpenFile = { selectedFilePath = it },
-                    onOpenDrawer = { scope.launch { drawerState.open() } },
-                    onToggleTools = { showToolsPanel = !showToolsPanel }
-                )
-            }
-
-            // Right-side tools panel
-            ToolsPanel(
-                visible = showToolsPanel,
-                onClose = { showToolsPanel = false }
-            )
-        }
+    if (selectedFilePath != null) {
+        EditorScreen(
+            storage = storage,
+            filePath = selectedFilePath!!,
+            onBack = { selectedFilePath = null }
+        )
+    } else {
+        FileBrowserScreen(
+            storage = storage,
+            path = currentPath,
+            onNavigate = { currentPath = it },
+            onOpenFile = { selectedFilePath = it }
+        )
     }
 }
 
@@ -202,9 +75,7 @@ fun FileBrowserScreen(
     storage: StorageProvider,
     path: String,
     onNavigate: (String) -> Unit,
-    onOpenFile: (String) -> Unit,
-    onOpenDrawer: () -> Unit,
-    onToggleTools: () -> Unit
+    onOpenFile: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
@@ -216,6 +87,13 @@ fun FileBrowserScreen(
     var showNewFolderDialog by remember { mutableStateOf(false) }
     var showRenameDialogFor by remember { mutableStateOf<FileItem?>(null) }
     var showDeleteDialogFor by remember { mutableStateOf<FileItem?>(null) }
+
+    // UI state for side panels
+    var showNavDrawer by remember { mutableStateOf(false) }
+    var showToolsPanel by remember { mutableStateOf(false) }
+
+    // Status text for tools (e.g. permissions fixer)
+    var toolsStatus by remember { mutableStateOf<String?>(null) }
 
     fun refresh() {
         scope.launch {
@@ -244,17 +122,14 @@ fun FileBrowserScreen(
                     )
                 },
                 navigationIcon = {
-                    // MT-style hamburger to open drawer
-                    TextButton(onClick = onOpenDrawer) {
+                    IconButton(onClick = { showNavDrawer = true }) {
                         Text("☰")
                     }
                 },
                 actions = {
-                    // Tools panel toggle
-                    IconButton(onClick = onToggleTools) {
-                        Text("🛠")
+                    IconButton(onClick = { showToolsPanel = true }) {
+                        Text("🛠️")
                     }
-                    // Refresh
                     IconButton(onClick = { refresh() }) {
                         Text("⟳")
                     }
@@ -263,66 +138,129 @@ fun FileBrowserScreen(
         },
         floatingActionButton = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // New folder
                 FloatingActionButton(onClick = { showNewFolderDialog = true }) {
                     Text("+📁")
                 }
-                // New file
                 FloatingActionButton(onClick = { showNewFileDialog = true }) {
                     Text("+📄")
                 }
             }
         }
     ) { pad ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(pad)
                 .fillMaxSize()
         ) {
-            if (error != null) {
-                Text(
-                    "Error: $error",
-                    modifier = Modifier.padding(12.dp),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
-            if (loading) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                val canGoUp = path != "/"
-                if (canGoUp) {
-                    ListItem(
-                        headlineContent = { Text("..") },
-                        supportingContent = { Text("Up") },
-                        modifier = Modifier
-                            .clickable {
-                                val up = path.trimEnd('/').substringBeforeLast("/", "")
-                                onNavigate(if (up.isBlank()) "/" else "/$up")
-                            }
-                            .padding(horizontal = 4.dp)
+            // Main file list
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                if (error != null) {
+                    Text(
+                        "Error: $error",
+                        modifier = Modifier.padding(12.dp),
+                        color = MaterialTheme.colorScheme.error
                     )
-                    Divider()
                 }
 
-                LazyColumn(Modifier.fillMaxSize()) {
-                    items(items) { item ->
-                        FileRow(
-                            item = item,
-                            onClick = {
-                                if (item.isDir) onNavigate(item.path) else onOpenFile(item.path)
-                            },
-                            onRename = { showRenameDialogFor = item },
-                            onDelete = { showDeleteDialogFor = item }
+                if (loading) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    val canGoUp = path != "/"
+                    if (canGoUp) {
+                        ListItem(
+                            headlineContent = { Text("..") },
+                            supportingContent = { Text("Up") },
+                            modifier = Modifier
+                                .clickable {
+                                    val up = path.trimEnd('/').substringBeforeLast("/", "")
+                                    onNavigate(if (up.isBlank()) "/" else "/$up")
+                                }
+                                .padding(horizontal = 4.dp)
                         )
                         Divider()
                     }
+
+                    LazyColumn(Modifier.fillMaxSize()) {
+                        items(items) { item ->
+                            FileRow(
+                                item = item,
+                                onClick = {
+                                    if (item.isDir) onNavigate(item.path) else onOpenFile(item.path)
+                                },
+                                onRename = { showRenameDialogFor = item },
+                                onDelete = { showDeleteDialogFor = item }
+                            )
+                            Divider()
+                        }
+                    }
+                }
+            }
+
+            // Left nav "drawer" overlay
+            if (showNavDrawer) {
+                Surface(
+                    tonalElevation = 4.dp,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(280.dp)
+                ) {
+                    NavDrawerContent(
+                        currentPath = path,
+                        onNavigate = {
+                            onNavigate(it)
+                            showNavDrawer = false
+                        },
+                        onShowTools = {
+                            showToolsPanel = true
+                            showNavDrawer = false
+                        },
+                        onDismiss = { showNavDrawer = false }
+                    )
+                }
+            }
+
+            // Right tools panel overlay
+            if (showToolsPanel) {
+                Surface(
+                    tonalElevation = 4.dp,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .align(Alignment.CenterEnd)
+                        .width(320.dp)
+                ) {
+                    ToolsPanel(
+                        currentPath = path,
+                        status = toolsStatus,
+                        onClose = { showToolsPanel = false },
+                        onFixPermissions = {
+                            scope.launch {
+                                // actual implementation of Permissions fixer
+                                if (!RootCheck.hasRoot()) {
+                                    toolsStatus = "Root not available. Cannot chmod files."
+                                    return@launch
+                                }
+                                toolsStatus = "Running permissions fix on $path …"
+
+                                val fixedCount = runPermissionsFixer(storage, path)
+                                toolsStatus =
+                                    "Permissions fixed for $fixedCount items under $path"
+                            }
+                        },
+                        onToolComingSoon = { toolName ->
+                            toolsStatus = "$toolName: coming soon"
+                        }
+                    )
                 }
             }
         }
     }
+
+    // --- dialogs for file / folder operations --------------------------------
 
     if (showNewFileDialog) {
         NamePromptDialog(
@@ -340,6 +278,7 @@ fun FileBrowserScreen(
                         if (shebang != null) {
                             storage.writeFile(newPath, shebang + "\n\n")
                         }
+
                         refresh()
                     } catch (e: Exception) {
                         error = e.message ?: "Failed to create file"
@@ -421,6 +360,181 @@ fun FileBrowserScreen(
     }
 }
 
+// -----------------------------------------------------------------------------
+// Navigation drawer content
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun NavDrawerContent(
+    currentPath: String,
+    onNavigate: (String) -> Unit,
+    onShowTools: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text("Termux File Manager", style = MaterialTheme.typography.headlineSmall)
+
+        // Quick locations
+        Surface(
+            tonalElevation = 2.dp,
+            shape = MaterialTheme.shapes.extraLarge,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .clickable {
+                        onNavigate("/")
+                        onDismiss()
+                    }
+                    .padding(16.dp)
+            ) {
+                Text("🏠 Home", style = MaterialTheme.typography.titleMedium)
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text("Favorites", style = MaterialTheme.typography.titleSmall)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "📁 /Scripts",
+                modifier = Modifier.clickable {
+                    onNavigate("/Scripts")
+                    onDismiss()
+                }
+            )
+            Text(
+                "📁 Workspace root",
+                modifier = Modifier.clickable {
+                    onNavigate("/")
+                    onDismiss()
+                }
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("Tools", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "🛠️ Show tools panel",
+            modifier = Modifier.clickable {
+                onShowTools()
+            }
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("Other", style = MaterialTheme.typography.titleSmall)
+        Text("ℹ About (coming soon)")
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Tools panel content (RIGHT SIDE) – with real Permissions fixer
+// -----------------------------------------------------------------------------
+
+@Composable
+private fun ToolsPanel(
+    currentPath: String,
+    status: String?,
+    onClose: () -> Unit,
+    onFixPermissions: () -> Unit,
+    onToolComingSoon: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Tools", style = MaterialTheme.typography.headlineSmall)
+            TextButton(onClick = onClose) {
+                Text("Close")
+            }
+        }
+
+        Text(
+            "Quick utilities:",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Hex viewer (stub)
+        ToolEntry(
+            title = "Hex viewer",
+            subtitle = "Inspect binary files in hex (coming soon)"
+        ) { onToolComingSoon("Hex viewer") }
+
+        // Permissions fixer – REAL IMPLEMENTATION
+        ToolEntry(
+            title = "Permissions fixer",
+            subtitle = "Batch-fix chmod for scripts under $currentPath"
+        ) { onFixPermissions() }
+
+        // APK signer (stub)
+        ToolEntry(
+            title = "APK signer",
+            subtitle = "Sign APKs directly from Termux storage (coming soon)"
+        ) { onToolComingSoon("APK signer") }
+
+        // Log viewer (stub)
+        ToolEntry(
+            title = "Log viewer",
+            subtitle = "Tail & filter log files (coming soon)"
+        ) { onToolComingSoon("Log viewer") }
+
+        // Script templates (stub)
+        ToolEntry(
+            title = "Script templates",
+            subtitle = "Generate starter scripts for new tools (coming soon)"
+        ) { onToolComingSoon("Script templates") }
+
+        Spacer(Modifier.height(12.dp))
+
+        if (status != null) {
+            Divider()
+            Text(
+                status,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToolEntry(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 8.dp)
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(
+            subtitle,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+// -----------------------------------------------------------------------------
+// File rows, dialogs, helpers
+// -----------------------------------------------------------------------------
+
 @Composable
 private fun FileRow(
     item: FileItem,
@@ -486,87 +600,62 @@ private fun NamePromptDialog(
     )
 }
 
+// -----------------------------------------------------------------------------
+// Permissions fixer engine (uses root + shell chmod)
+// -----------------------------------------------------------------------------
+
 /**
- * Right-side tools panel – for now just shows "coming soon" items.
- * Slides in/out from the right like MT Manager's tools drawer.
+ * Recursively walk the current logical path and chmod files/dirs via root.
+ *
+ * - SAF mode: assumes Termux home at /data/data/com.termux/files/home
+ * - LEGACY mode: assumes workspace at /sdcard/TermuxProjects
+ *
+ * Returns number of items successfully chmod'ed.
  */
-@Composable
-fun ToolsPanel(
-    visible: Boolean,
-    onClose: () -> Unit
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInHorizontally(
-            initialOffsetX = { fullWidth -> fullWidth },
-            animationSpec = tween(durationMillis = 200)
-        ),
-        exit = slideOutHorizontally(
-            targetOffsetX = { fullWidth -> fullWidth },
-            animationSpec = tween(durationMillis = 200)
-        ),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            Surface(
-                tonalElevation = 3.dp,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(260.dp)
-                    .align(Alignment.CenterEnd)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Tools",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        TextButton(onClick = onClose) {
-                            Text("Close")
-                        }
-                    }
+private suspend fun runPermissionsFixer(
+    storage: StorageProvider,
+    logicalRoot: String
+): Int {
+    val baseAbs = when (storage) {
+        is SafStorageProvider -> "/data/data/com.termux/files/home"
+        is LegacyFileStorageProvider -> "/sdcard/TermuxProjects"
+        else -> return 0
+    }
 
-                    Text(
-                        "Quick utilities (roadmap):",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+    suspend fun walk(path: String): Int {
+        val list = try {
+            storage.list(path)
+        } catch (_: Exception) {
+            return 0
+        }
 
-                    ToolItem("Hex viewer", "Inspect binary files in hex (coming soon)")
-                    ToolItem("Permissions fixer", "Batch-fix chmod for scripts")
-                    ToolItem("APK signer", "Sign APKs directly from Termux storage")
-                    ToolItem("Log viewer", "Tail & filter log files")
-                    ToolItem("Script templates", "Generate starter scripts for new tools")
-                }
+        var count = 0
+        for (item in list) {
+            val abs = (baseAbs + item.path).replace("//", "/")
+            val mode = if (item.isDir) "775" else "664"
+            if (runSuChmod(abs, mode)) count++
+            if (item.isDir) {
+                count += walk(item.path)
             }
         }
+        return count
     }
+
+    // Try chmod on the root itself (as directory)
+    val rootAbs = (baseAbs + logicalRoot).replace("//", "/")
+    runSuChmod(rootAbs, "775")
+
+    return walk(logicalRoot)
 }
 
-@Composable
-private fun ToolItem(
-    title: String,
-    description: String
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-    ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            description,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        )
+private fun runSuChmod(absPath: String, mode: String): Boolean {
+    return try {
+        val cmd = "chmod $mode '$absPath'"
+        val proc = ProcessBuilder("su", "-c", cmd)
+            .redirectErrorStream(true)
+            .start()
+        proc.waitFor() == 0
+    } catch (_: Exception) {
+        false
     }
 }
