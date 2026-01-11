@@ -28,6 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -495,6 +500,8 @@ private fun ToolsPanel(
     var showHexPrompt by remember { mutableStateOf(false) }
     var showLogPrompt by remember { mutableStateOf(false) }
     var showTemplatePrompt by remember { mutableStateOf(false) }
+    var showApkSignerPrompt by remember { mutableStateOf(false) }
+    var apkSignerCommand by remember { mutableStateOf<String?>(null) }
 
     Surface(
         tonalElevation = 4.dp,
@@ -562,13 +569,16 @@ private fun ToolsPanel(
                 }
             }
 
-            // APK signer placeholder
+            // APK signer helper
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("APK signer", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Sign APKs directly from Termux storage (coming soon)",
+                    "Generate an apksigner command you can run in Termux.",
                     style = MaterialTheme.typography.bodySmall
                 )
+                OutlinedButton(onClick = { showApkSignerPrompt = true }) {
+                    Text("Build apksigner command")
+                }
             }
 
             // Log viewer
@@ -657,6 +667,38 @@ private fun ToolsPanel(
             }
         )
     }
+        // Prompt: APK file name for apksigner
+    if (showApkSignerPrompt) {
+        NamePromptDialog(
+            title = "APK signer",
+            hint = "myapp-unsigned.apk",
+            onDismiss = { showApkSignerPrompt = false },
+            onConfirm = { name ->
+                val cleaned = name.trim()
+                if (cleaned.isNotEmpty()) {
+                    val apkLogicalPath =
+                        (currentPath.trimEnd('/') + "/$cleaned").replace("//", "/")
+                    apkSignerCommand = buildApkSignerCommand(apkLogicalPath)
+                    showApkSignerPrompt = false
+                }
+            }
+        )
+    }
+
+    // Dialog: show / copy generated apksigner command
+    if (apkSignerCommand != null) {
+        ApkSignerCommandDialog(
+            command = apkSignerCommand!!,
+            onCopy = {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(
+                    ClipData.newPlainText("apksigner command", apkSignerCommand!!)
+                )
+            },
+            onDismiss = { apkSignerCommand = null }
+        )
+    }
+
     // Prompt: script template
     if (showTemplatePrompt) {
         NamePromptDialog(
@@ -687,6 +729,51 @@ private fun ToolsPanel(
         )
     }
 }
+
+// ---------------------------------------------------------
+// Apk Signer
+// ---------------------------------------------------------
+
+@Composable
+private fun ApkSignerCommandDialog(
+    command: String,
+    onCopy: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("apksigner command") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Run this inside Termux to sign your APK. Edit the keystore path, alias and passwords first:",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 80.dp, max = 260.dp)
+                        .verticalScroll(rememberScrollState())
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        command,
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onCopy) { Text("Copy command") }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
+}
+
 
 // ---------------------------------------------------------
 // Simple file row + dialogs
@@ -847,6 +934,22 @@ private fun toHexDump(bytes: ByteArray, limit: Int, bytesPerLine: Int = 16): Str
         offset += bytesPerLine
     }
     return sb.toString()
+}
+
+private fun buildApkSignerCommand(apkPath: String): String {
+    val outPath = if (apkPath.endsWith(".apk")) {
+        apkPath.removeSuffix(".apk") + "-signed.apk"
+    } else {
+        "$apkPath-signed.apk"
+    }
+
+    return """
+        apksigner sign \
+          --ks /path/to/your-release-key.jks \
+          --ks-key-alias your_key_alias \
+          --out "$outPath" \
+          "$apkPath"
+    """.trimIndent()
 }
 
 private fun buildScriptTemplate(fileName: String): String {
