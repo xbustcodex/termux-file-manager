@@ -43,7 +43,6 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
     var currentPath by remember { mutableStateOf("/") }
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
     var hexViewerPath by remember { mutableStateOf<String?>(null) }
-    // (optional, for future) log viewer
     var logViewerPath by remember { mutableStateOf<String?>(null) }
 
     when {
@@ -479,6 +478,7 @@ private fun ToolsPanel(
     var runningFix by remember { mutableStateOf(false) }
 
     var showHexPrompt by remember { mutableStateOf(false) }
+    var showLogPrompt by remember { mutableStateOf(false) }
     var showTemplatePrompt by remember { mutableStateOf(false) }
 
     Surface(
@@ -556,14 +556,18 @@ private fun ToolsPanel(
                 )
             }
 
-            // Log viewer placeholder
+            // Log viewer
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Log viewer", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Tail & filter log files (coming soon)",
+                    "View .log / .txt files as plain text.",
                     style = MaterialTheme.typography.bodySmall
                 )
+                OutlinedButton(onClick = { showLogPrompt = true }) {
+                    Text("Open log file")
+                }
             }
+
 
             // Script templates
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -606,7 +610,24 @@ private fun ToolsPanel(
             }
         )
     }
-
+    // Prompt: log viewer file name  <── NEW
+    if (showLogPrompt) {
+        NamePromptDialog(
+            title = "Log viewer",
+            hint = "app.log / output.txt",
+            onDismiss = { showLogPrompt = false },
+            onConfirm = { name ->
+                val cleaned = name.trim()
+                if (cleaned.isNotEmpty()) {
+                    val logicalPath =
+                        (currentPath.trimEnd('/') + "/$cleaned").replace("//", "/")
+                    onOpenLogViewer(logicalPath)
+                    showLogPrompt = false
+                    onClose()
+                }
+            }
+        )
+    }
     // Prompt: script template
     if (showTemplatePrompt) {
         NamePromptDialog(
@@ -721,6 +742,68 @@ fun HexViewerScreen(
         }
     }
 }
+
+// ---------------------------------------------------------
+// Log viewer screen
+// ---------------------------------------------------------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LogViewerScreen(
+    storage: StorageProvider,
+    filePath: String,
+    onBack: () -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(filePath) {
+        loading = true
+        error = null
+        try {
+            // plain text read
+            text = storage.readFile(filePath)
+        } catch (e: Exception) {
+            error = "Error: ${e.message}"
+        } finally {
+            loading = false
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Log: $filePath") },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text("Back") }
+                }
+            )
+        }
+    ) { pad ->
+        Column(
+            modifier = Modifier
+                .padding(pad)
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (loading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else if (error != null) {
+                Text(error!!, color = MaterialTheme.colorScheme.error)
+            } else {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace
+                    )
+                )
+            }
+        }
+    }
+}
+
 
 // ---------------------------------------------------------
 // Simple file row + dialogs
