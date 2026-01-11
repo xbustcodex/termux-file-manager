@@ -293,7 +293,8 @@ fun FileBrowserScreen(
             onClose = { showToolsPanel = false },
             onOpenHexViewer = onOpenHexViewer,
             onOpenLogViewer = onOpenLogViewer,
-            onOpenFile = onOpenFile
+            onOpenFile = onOpenFile,
+            onOpenTerminal = onOpenTerminal
         )
     }
 
@@ -484,7 +485,8 @@ private fun ToolsPanel(
     onClose: () -> Unit,
     onOpenHexViewer: (String) -> Unit,
     onOpenLogViewer: (String) -> Unit,
-    onOpenFile: (String) -> Unit
+    onOpenFile: (String) -> Unit,
+    onOpenTerminal: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<String?>(null) }
