@@ -744,68 +744,6 @@ fun HexViewerScreen(
 }
 
 // ---------------------------------------------------------
-// Log viewer screen
-// ---------------------------------------------------------
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LogViewerScreen(
-    storage: StorageProvider,
-    filePath: String,
-    onBack: () -> Unit
-) {
-    var text by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(filePath) {
-        loading = true
-        error = null
-        try {
-            // plain text read
-            text = storage.readFile(filePath)
-        } catch (e: Exception) {
-            error = "Error: ${e.message}"
-        } finally {
-            loading = false
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Log: $filePath") },
-                navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Back") }
-                }
-            )
-        }
-    ) { pad ->
-        Column(
-            modifier = Modifier
-                .padding(pad)
-                .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (loading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            } else if (error != null) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
-            } else {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = FontFamily.Monospace
-                    )
-                )
-            }
-        }
-    }
-}
-
-
-// ---------------------------------------------------------
 // Simple file row + dialogs
 // ---------------------------------------------------------
 
