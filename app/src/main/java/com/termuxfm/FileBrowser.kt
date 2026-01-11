@@ -44,6 +44,8 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
     var hexViewerPath by remember { mutableStateOf<String?>(null) }
     var logViewerPath by remember { mutableStateOf<String?>(null) }
+    var terminalPath by remember { mutableStateOf<String?>(null) }
+
 
     when {
         // 1) Hex viewer has priority when active
@@ -73,7 +75,16 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
             )
         }
 
-        // 4) Default: file browser
+        // 4) Normal terminal
+        
+        terminalPath != null -> {
+            AndroidTerminal(
+                initialPath = terminalPath ?: currentPath,
+                onBack = { terminalPath = null }
+            )
+        }
+        
+        // 5) Default: file browser
         else -> {
             FileBrowserScreen(
                 storage = storage,
@@ -81,7 +92,9 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
                 onNavigate = { currentPath = it },
                 onOpenFile = { selectedFilePath = it },
                 onOpenHexViewer = { hexViewerPath = it },
-                onOpenLogViewer = { logViewerPath = it } // for later
+                onOpenLogViewer = { logViewerPath = it },
+                onOpenTerminalHere = { path ->           // ← add this arg
+                    terminalPath = path
             )
         }
     }
@@ -140,7 +153,8 @@ fun FileBrowserScreen(
     onNavigate: (String) -> Unit,
     onOpenFile: (String) -> Unit,
     onOpenHexViewer: (String) -> Unit,
-    onOpenLogViewer: (String) -> Unit
+    onOpenLogViewer: (String) -> Unit,
+    onOpenTerminalHere: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
@@ -190,6 +204,9 @@ fun FileBrowserScreen(
                 actions = {
                     TextButton(onClick = { showToolsPanel = true }) {
                         Text("🛠")
+                    }
+                    IconButton(onClick = { onOpenTerminalHere(path) }) {
+                        Text(">_")
                     }
                     TextButton(onClick = { refresh() }) {
                         Text("⟳")
