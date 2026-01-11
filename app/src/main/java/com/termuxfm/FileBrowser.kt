@@ -44,6 +44,8 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
     var selectedFilePath by remember { mutableStateOf<String?>(null) }
     var hexViewerPath by remember { mutableStateOf<String?>(null) }
     var logViewerPath by remember { mutableStateOf<String?>(null) }
+    var terminalPath by remember { mutableStateOf<String?>(null) }
+
 
     when {
         // 1) Hex viewer has priority when active
@@ -64,7 +66,15 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
             )
         }
 
-        // 3) Normal text editor
+        // 3) Terminal screen
+        terminalPath != null -> {
+            TerminalScreen(
+                startingDir = terminalPath!!,
+                onBack = { terminalPath = null }
+            )
+        }
+ 
+        // 4) Normal text editor
         selectedFilePath != null -> {
             EditorScreen(
                 storage = storage,
@@ -81,7 +91,8 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
                 onNavigate = { currentPath = it },
                 onOpenFile = { selectedFilePath = it },
                 onOpenHexViewer = { hexViewerPath = it },
-                onOpenLogViewer = { logViewerPath = it } // for later
+                onOpenLogViewer = { logViewerPath = it },
+                onOpenTerminal = { terminalPath = it }
             )
         }
     }
@@ -140,7 +151,9 @@ fun FileBrowserScreen(
     onNavigate: (String) -> Unit,
     onOpenFile: (String) -> Unit,
     onOpenHexViewer: (String) -> Unit,
-    onOpenLogViewer: (String) -> Unit
+    onOpenLogViewer: (String) -> Unit,
+    onOpenTerminal: (String) -> Unit
+
 ) {
     val scope = rememberCoroutineScope()
 
@@ -568,7 +581,21 @@ private fun ToolsPanel(
                 }
             }
 
-
+            // Terminal launcher
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Terminal", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Open a terminal window starting at this folder.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                OutlinedButton(onClick = {
+                    onOpenTerminal(currentPath)
+                    onClose()
+                }) {
+                    Text("Open Terminal Here")
+                }
+            }
+            
             // Script templates
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Script templates", style = MaterialTheme.typography.titleMedium)
