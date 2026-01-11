@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +30,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -689,12 +689,6 @@ private fun ToolsPanel(
     if (apkSignerCommand != null) {
         ApkSignerCommandDialog(
             command = apkSignerCommand!!,
-            onCopy = {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(
-                    ClipData.newPlainText("apksigner command", apkSignerCommand!!)
-                )
-            },
             onDismiss = { apkSignerCommand = null }
         )
     }
@@ -737,9 +731,11 @@ private fun ToolsPanel(
 @Composable
 private fun ApkSignerCommandDialog(
     command: String,
-    onCopy: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("apksigner command") },
@@ -766,13 +762,22 @@ private fun ApkSignerCommandDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onCopy) { Text("Copy command") }
+            TextButton(
+                onClick = {
+                    clipboard.setPrimaryClip(
+                        ClipData.newPlainText("apksigner command", command)
+                    )
+                }
+            ) {
+                Text("Copy command")
+            }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) { Text("Close") }
         }
     )
 }
+
 
 
 // ---------------------------------------------------------
