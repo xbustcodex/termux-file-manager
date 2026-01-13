@@ -172,6 +172,7 @@ fun FileBrowserScreen(
     var showDeleteDialogFor by remember { mutableStateOf<FileItem?>(null) }
 
     var showDrawer by remember { mutableStateOf(false) }
+    var showEditorPrompt by remember { mutableStateOf(false) }
     var showToolsPanel by remember { mutableStateOf(false) }
 
     fun refresh() {
@@ -289,7 +290,7 @@ fun FileBrowserScreen(
             onClose = { showDrawer = false }
         )
     }
-
+    
     // Tools overlay panel
     if (showToolsPanel) {
         ToolsPanel(
@@ -415,9 +416,12 @@ private fun DrawerContent(
     currentPath: String,
     onNavigate: (String) -> Unit,
     onShowTools: () -> Unit,
+    onOpenEditor: (String) -> Unit,
     onClose: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showEditorPrompt by remember { mutableStateOf(false) }
+
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -462,6 +466,21 @@ private fun DrawerContent(
                 }
             }
 
+            // --- Text Editor ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showEditorPrompt = true }
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+               Text(
+                   "📝 Open Text Editor",
+                   style = MaterialTheme.typography.bodyLarge,
+                   modifier = Modifier.weight(1f)
+               )
+            }
+    
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Other", style = MaterialTheme.typography.titleMedium)
                 Text("ℹ About (coming soon)")
@@ -477,6 +496,21 @@ private fun DrawerContent(
             }
         }
     }
+}
+if (showEditorPrompt) {
+    NamePromptDialog(
+        title = "Open in Text Editor",
+        hint = "example.sh / notes.txt / script.py",
+        onDismiss = { showEditorPrompt = false },
+        onConfirm = { name ->
+            val cleaned = name.trim()
+            if (cleaned.isNotEmpty()) {
+                val fullPath = (currentPath.trimEnd('/') + "/$cleaned").replace("//", "/")
+                onOpenEditor(fullPath)
+                showEditorPrompt = false
+            }
+        }
+    )
 }
 
 // ---------------------------------------------------------
