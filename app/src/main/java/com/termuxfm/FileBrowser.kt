@@ -426,7 +426,6 @@ private fun DrawerContent(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showEditorPrompt by remember { mutableStateOf(false) }
 
-
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState
@@ -478,13 +477,13 @@ private fun DrawerContent(
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-               Text(
-                   "📝 Open Text Editor",
-                   style = MaterialTheme.typography.bodyLarge,
-                   modifier = Modifier.weight(1f)
-               )
+                Text(
+                    "📝 Open Text Editor",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
             }
-            
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Other", style = MaterialTheme.typography.titleMedium)
                 Text("ℹ About (coming soon)")
@@ -501,21 +500,25 @@ private fun DrawerContent(
         }
     }
 
+    // 🔹 This IF BLOCK *belongs inside* DrawerContent
     if (showEditorPrompt) {
-    NamePromptDialog(
-        title = "Open in Text Editor",
-        hint = "example.sh / notes.txt / script.py",
-        onDismiss = { showEditorPrompt = false },
-        onConfirm = { name ->
-            val cleaned = name.trim()
-            if (cleaned.isNotEmpty()) {
-                val fullPath = (currentPath.trimEnd('/') + "/$cleaned").replace("//", "/")
-                onOpenEditor(fullPath)
-                showEditorPrompt = false
+        NamePromptDialog(
+            title = "Open in Text Editor",
+            hint = "example.sh / notes.txt / script.py",
+            onDismiss = { showEditorPrompt = false },
+            onConfirm = { name ->
+                val cleaned = name.trim()
+                if (cleaned.isNotEmpty()) {
+                    val fullPath =
+                        (currentPath.trimEnd('/') + "/$cleaned").replace("//", "/")
+                    onOpenEditor(fullPath)
+                    showEditorPrompt = false
+                }
             }
-        }
-    )
+        )
+    }
 }
+
 
 // ---------------------------------------------------------
 // Tools panel (right-side overlay)
