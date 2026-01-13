@@ -172,7 +172,6 @@ fun FileBrowserScreen(
     var showDeleteDialogFor by remember { mutableStateOf<FileItem?>(null) }
 
     var showDrawer by remember { mutableStateOf(false) }
-    var showEditorPrompt by remember { mutableStateOf(false) }
     var showToolsPanel by remember { mutableStateOf(false) }
 
     fun refresh() {
@@ -287,6 +286,11 @@ fun FileBrowserScreen(
                 showDrawer = false
                 showToolsPanel = true
             },
+            onOpenEditor = { fullPath ->
+
+                onOpenFile(fullPath)
+                showDrawer = false
+            },    
             onClose = { showDrawer = false }
         )
     }
@@ -480,7 +484,7 @@ private fun DrawerContent(
                    modifier = Modifier.weight(1f)
                )
             }
-    
+            
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Other", style = MaterialTheme.typography.titleMedium)
                 Text("ℹ About (coming soon)")
@@ -496,8 +500,8 @@ private fun DrawerContent(
             }
         }
     }
-}
-if (showEditorPrompt) {
+
+    if (showEditorPrompt) {
     NamePromptDialog(
         title = "Open in Text Editor",
         hint = "example.sh / notes.txt / script.py",
