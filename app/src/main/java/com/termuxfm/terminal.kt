@@ -223,7 +223,7 @@ fun TerminalScreen(startPath: String) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             suggestions.forEach { s ->
-                SuggestionChip(
+                AssistChip(
                     onClick = {
                         command = if (command.isBlank()) s else "$command $s"
                     },
@@ -234,11 +234,11 @@ fun TerminalScreen(startPath: String) {
                             color = Color(0xFFD9D9FF)
                         )
                     },
-                    colors = ChipDefaults.suggestionChipColors(
+                    colors = AssistChipDefaults.assistChipColors(
                         containerColor = Color(0xFF141427),
                         labelColor = Color(0xFFD9D9FF)
                     ),
-                    border = ChipDefaults.suggestionChipBorder(
+                    border = AssistChipDefaults.assistChipBorder(
                         borderColor = Color(0xFF40406A),
                         borderWidth = 1.dp
                     )
@@ -280,7 +280,7 @@ fun TerminalScreen(startPath: String) {
                 }
             ) {
                 Icon(
-                    imageVector = Icons.Default.ContentCopy,
+                    imageVector = Icons.Filled.ContentCopy,
                     contentDescription = "Copy output",
                     tint = Color(0xFFB0F4FF)
                 )
@@ -346,7 +346,7 @@ fun TerminalScreen(startPath: String) {
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ArrowUpward,
+                                imageVector = Icons.Filled.ArrowUpward,
                                 contentDescription = "Previous command",
                                 tint = Color(0xFFB0F4FF)
                             )
@@ -365,7 +365,7 @@ fun TerminalScreen(startPath: String) {
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ArrowDownward,
+                                imageVector = Icons.Filled.ArrowDownward,
                                 contentDescription = "Next command",
                                 tint = Color(0xFFB0F4FF)
                             )
@@ -394,31 +394,11 @@ fun TerminalScreen(startPath: String) {
                     )
             ) {
                 Icon(
-                    imageVector = Icons.Default.Send,
+                    imageVector = Icons.Filled.Send,
                     contentDescription = "Run command",
                     tint = Color(0xFF050509)
                 )
             }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SuggestionChip(
-    onClick: () -> Unit,
-    label: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    colors: ChipColors = ChipDefaults.suggestionChipColors(),
-    border: ChipBorder? = null,
-    enabled: Boolean = true
-) {
-    androidx.compose.material3.AssistChip(
-        onClick = onClick,
-        label = label,
-        modifier = modifier,
-        colors = colors,
-        border = border,
-        enabled = enabled
-    )
 }
