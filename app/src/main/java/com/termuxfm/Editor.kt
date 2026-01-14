@@ -36,7 +36,6 @@ fun EditorScreen(
     var status by remember { mutableStateOf<String?>(null) }
     var showRunDialog by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
-    var autoSaveEnabled by remember { mutableStateOf(true) }
     var lineCount by remember { mutableStateOf(1) }
     var hasUnsavedChanges by remember { 
         mutableStateOf(false) 
@@ -50,25 +49,6 @@ fun EditorScreen(
     LaunchedEffect(content) {
         lineCount = content.count { it == '\n' } + 1
         hasUnsavedChanges = content != originalContent
-        
-        // Auto-save after delay if enabled and there are changes
-        if (autoSaveEnabled && hasUnsavedChanges) {
-            delay(2000) // 2 second delay before auto-save
-            if (hasUnsavedChanges) {
-                scope.launch {
-                    try {
-                        storage.writeFile(filePath, content)
-                        originalContent = content
-                        status = "Auto-saved"
-                        // Clear status after 1.5 seconds
-                        delay(1500)
-                        status = null
-                    } catch (e: Exception) {
-                        status = "Auto-save failed"
-                    }
-                }
-            }
-        }
     }
 
     // Load file content
@@ -99,7 +79,7 @@ fun EditorScreen(
     }
 
     // Handle back navigation with unsaved changes check
-    val handleBack = {
+    val handleBack: () -> Unit = {
         if (hasUnsavedChanges) {
             showUnsavedChangesDialog = true
         } else {
@@ -108,7 +88,7 @@ fun EditorScreen(
     }
 
     // Save function
-    val saveFile = {
+    val saveFile: () -> Unit = {
         scope.launch {
             try {
                 storage.writeFile(filePath, content)
@@ -388,34 +368,6 @@ fun EditorScreen(
                                 Text("Background")
                             }
                         }
-                        
-                        // Test syntax button for bash scripts
-                        if (filePath.endsWith(".sh", ignoreCase = true)) {
-                            TextButton(
-                                onClick = {
-                                    scope.launch {
-                                        try {
-                                            val testCommand = "bash -n \"$absPath\""
-                                            // You could implement a syntax check function here
-                                            Toast.makeText(
-                                                context,
-                                                "Syntax check for bash scripts would go here",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        } catch (e: Exception) {
-                                            Toast.makeText(
-                                                context,
-                                                "Syntax check failed: ${e.message}",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    }
-                                    showRunDialog = false
-                                }
-                            ) {
-                                Text("Check Syntax")
-                            }
-                        }
 
                         TextButton(
                             onClick = { showRunDialog = false }
@@ -429,13 +381,13 @@ fun EditorScreen(
     }
 }
 
-private fun isRunnableScript(path: String): Boolean {
+internal fun isRunnableScript(path: String): Boolean {
     val lower = path.lowercase()
     return listOf(".sh", ".bash", ".py", ".js", ".php", ".rb", ".pl", ".lua")
         .any { lower.endsWith(it) }
 }
 
-private fun resolveScriptAbsolutePath(
+internal fun resolveScriptAbsolutePath(
     storageProvider: StorageProvider,
     logicalPath: String
 ): String? {
@@ -448,7 +400,7 @@ private fun resolveScriptAbsolutePath(
     }
 }
 
-private fun detectScriptType(path: String): String {
+internal fun detectScriptType(path: String): String {
     val lower = path.lowercase()
     return when {
         lower.endsWith(".sh") || lower.endsWith(".bash") -> "bash"
@@ -462,7 +414,7 @@ private fun detectScriptType(path: String): String {
     }
 }
 
-private fun defaultShebangFor(type: String): String? =
+internal fun defaultShebangFor(type: String): String? =
     when (type) {
         "bash" -> "#!/data/data/com.termux/files/usr/bin/bash"
         "python" -> "#!/data/data/com.termux/files/usr/bin/python"
@@ -473,10 +425,3 @@ private fun defaultShebangFor(type: String): String? =
         "lua" -> "#!/data/data/com.termux/files/usr/bin/lua"
         else -> null
     }
-
-// Extension function for Toast
-private fun Toast.showShort(message: String) {
-    setText(message)
-    duration = Toast.LENGTH_SHORT
-    show()
-}
