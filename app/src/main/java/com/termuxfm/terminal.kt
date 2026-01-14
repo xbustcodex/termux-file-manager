@@ -1,9 +1,7 @@
 package com.termuxfm
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,7 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,7 @@ fun TerminalScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
 
     var currentDir by remember { mutableStateOf(startingDir.ifBlank { "/" }) }
     var command by remember { mutableStateOf("") }
@@ -39,17 +41,14 @@ fun TerminalScreen(
 
     val scrollState = rememberScrollState()
 
-    // Function to append output
+    // Append output (with crude error marker)
     fun appendOutput(text: String, isError: Boolean = false) {
-        output = if (isError) {
-            output + "\n" + "❌ " + text // Red color for error
-        } else {
-            output + "\n" + text
-        }
+        val line = if (isError) "❌ $text" else text
+        output = if (output.isBlank()) line else output + "\n" + line
     }
 
     suspend fun runShellCommand(cmd: String) {
-        // Handle simple `cd` locally.
+        // Handle simple `cd` locally (virtual)
         if (cmd.startsWith("cd ")) {
             val target = cmd.removePrefix("cd").trim()
             currentDir = if (target.startsWith("/")) {
@@ -76,7 +75,6 @@ fun TerminalScreen(
                 val errText = stderr.readText()
 
                 val code = process.waitFor()
-
                 Triple(outText, errText, code)
             } catch (e: Exception) {
                 Triple("", "Error: ${e.message}", -1)
@@ -93,20 +91,25 @@ fun TerminalScreen(
         }
         appendOutput("→ exit code: $code")
 
-        // update history (no duplicates next to each other)
+        // update history (no duplicate at top, cap 20)
         if (cmd.isNotBlank() && history.firstOrNull() != cmd) {
-            history = listOf(cmd) + history.take(19) // cap at 20
+            history = listOf(cmd) + history.take(19)
         }
 
         isRunning = false
     }
 
-    // Auto-scroll whenever output changes
+    // Auto-scroll on new output
     LaunchedEffect(output) {
         if (output.isNotBlank()) {
             scrollState.animateScrollTo(scrollState.maxValue)
         }
     }
+
+    // Dragon-theme colors
+    val bgDark = Color(0xFF05060A)
+    val panelDark = Color(0xFF111319)
+    val neonGreen = Color(0xFF00FF7F)
 
     Scaffold(
         topBar = {
@@ -115,7 +118,8 @@ fun TerminalScreen(
                     Column {
                         Text(
                             "Terminal",
-                            style = MaterialTheme.typography.titleMedium.copy(color = Color(0xFF00FF00)) // Neon green color
+                            style = MaterialTheme.typography.titleMedium,
+                            color = neonGreen
                         )
                         Text(
                             currentDir,
@@ -126,27 +130,26 @@ fun TerminalScreen(
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("Back", color = Color(0xFF00FF00)) // Neon green color
+                        Text("Back", color = neonGreen)
                     }
                 },
                 actions = {
                     TextButton(
                         onClick = { showClearConfirm = true },
-                        enabled = output.isNotBlank(),
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF00FF00)) // Neon green color
+                        enabled = output.isNotBlank()
                     ) {
-                        Text("Clear")
+                        Text("Clear", color = neonGreen)
                     }
                     TextButton(
                         onClick = {
-                            val clipboard = LocalClipboardManager.current
-                            clipboard.setText(AnnotatedString(output))
-                            appendOutput("→ Output copied to clipboard")
+                            if (output.isNotBlank()) {
+                                clipboardManager.setText(AnnotatedString(output))
+                                appendOutput("→ Output copied to clipboard")
+                            }
                         },
-                        enabled = output.isNotBlank(),
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF00FF00)) // Neon green color
+                        enabled = output.isNotBlank()
                     ) {
-                        Text("Copy Output")
+                        Text("Copy", color = neonGreen)
                     }
                 }
             )
@@ -156,17 +159,18 @@ fun TerminalScreen(
             modifier = Modifier
                 .padding(pad)
                 .fillMaxSize()
+                .background(bgDark)
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            // Output card with dark background
+            // Output panel
             Card(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF1E1E1E) // Dark background
+                    containerColor = panelDark
                 )
             ) {
                 Box(
@@ -174,7 +178,6 @@ fun TerminalScreen(
                         .fillMaxSize()
                         .padding(8.dp)
                         .verticalScroll(scrollState)
-                        .background(Color(0xFF1E1E1E)) // Dark background
                 ) {
                     Text(
                         text = if (output.isBlank())
@@ -182,23 +185,25 @@ fun TerminalScreen(
                         else output,
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            color = Color(0xFF00FF00) // Neon green color
+                            color = neonGreen
                         )
                     )
                 }
             }
 
-            // Command input section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            // Command input + controls
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
                 OutlinedTextField(
                     value = command,
                     onValueChange = { command = it },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = {
-                        Text(if (isRunning) "Running…" else "Command", color = Color(0xFF00FF00)) // Neon green color
+                        Text(
+                            if (isRunning) "Running…" else "Command",
+                            color = neonGreen
+                        )
                     },
                     placeholder = { Text("ls, pwd, cd .., etc.") }
                 )
@@ -219,34 +224,32 @@ fun TerminalScreen(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF00FF00)) // Neon green color
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = neonGreen,
+                            contentColor = Color.Black
+                        )
                     ) {
                         Text(if (isRunning) "Working…" else "Run")
                     }
 
                     TextButton(
-                        enabled = !isRunning,
-                        onClick = { command = "" },
-                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF00FF00)) // Neon green color
+                        enabled = !isRunning && command.isNotBlank(),
+                        onClick = { command = "" }
                     ) {
-                        Text("Clear input")
+                        Text("Clear input", color = neonGreen)
                     }
                 }
 
-                // Quick history chips
+                // Quick history chips (top 3)
                 if (history.isNotEmpty()) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             "Recent commands",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF00FF00) // Neon green color
+                            color = neonGreen
                         )
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .wrapContentHeight(),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             history.take(3).forEach { cmd ->
@@ -259,15 +262,12 @@ fun TerminalScreen(
                                             MaterialTheme.colorScheme.outline,
                                             MaterialTheme.shapes.small
                                         )
-                                        .background(
-                                            MaterialTheme.colorScheme.surface
-                                        )
                                 ) {
                                     Text(
                                         cmd,
                                         style = MaterialTheme.typography.labelSmall,
                                         maxLines = 1,
-                                        color = Color(0xFF00FF00) // Neon green color
+                                        color = neonGreen
                                     )
                                 }
                             }
@@ -278,6 +278,7 @@ fun TerminalScreen(
         }
     }
 
+    // Clear output dialog
     if (showClearConfirm) {
         AlertDialog(
             onDismissRequest = { showClearConfirm = false },
@@ -288,12 +289,12 @@ fun TerminalScreen(
                     output = ""
                     showClearConfirm = false
                 }) {
-                    Text("Clear", color = Color(0xFF00FF00)) // Neon green color
+                    Text("Clear", color = neonGreen)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirm = false }) {
-                    Text("Cancel", color = Color(0xFF00FF00)) // Neon green color
+                    Text("Cancel", color = neonGreen)
                 }
             }
         )
