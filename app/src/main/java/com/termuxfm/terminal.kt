@@ -14,10 +14,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -243,27 +239,11 @@ fun TerminalScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 suggestions.forEach { s ->
-                    // Use FilterChip instead of AssistChip for better compatibility
-                    FilterChip(
-                        selected = false,
+                    SuggestionButton(
+                        text = s,
                         onClick = {
                             command = if (command.isBlank()) s else "$command $s"
-                        },
-                        label = {
-                            Text(
-                                text = s,
-                                fontSize = 11.sp,
-                                color = Color(0xFFD9D9FF)
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = Color(0xFF141427),
-                            labelColor = Color(0xFFD9D9FF)
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            borderColor = Color(0xFF40406A),
-                            borderWidth = 1.dp
-                        )
+                        }
                     )
                 }
             }
@@ -301,14 +281,8 @@ fun TerminalScreen(
                         clipboardManager.setText(AnnotatedString(joined))
                     }
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.ContentCopy,
-                        contentDescription = "Copy output",
-                        tint = Color(0xFFB0F4FF)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Copy output",
+                        text = "📋 Copy",
                         color = Color(0xFFB0F4FF),
                         fontSize = 12.sp
                     )
@@ -320,7 +294,7 @@ fun TerminalScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Use BasicTextField for better control
+                // Command input
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -376,7 +350,7 @@ fun TerminalScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // History up button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             // history up (older)
                             if (history.isNotEmpty()) {
@@ -388,15 +362,11 @@ fun TerminalScreen(
                         },
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowUpward,
-                            contentDescription = "Previous command",
-                            tint = Color(0xFFB0F4FF)
-                        )
+                        Text("↑", color = Color(0xFFB0F4FF))
                     }
 
                     // History down button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             // history down (newer)
                             if (history.isNotEmpty() && historyIndex > 0) {
@@ -410,15 +380,11 @@ fun TerminalScreen(
                         },
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowDownward,
-                            contentDescription = "Next command",
-                            tint = Color(0xFFB0F4FF)
-                        )
+                        Text("↓", color = Color(0xFFB0F4FF))
                     }
 
                     // Send button
-                    IconButton(
+                    TextButton(
                         onClick = {
                             runCommand(command)
                             focusManager.clearFocus()
@@ -435,14 +401,30 @@ fun TerminalScreen(
                                 )
                             )
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Send,
-                            contentDescription = "Run command",
-                            tint = Color(0xFF050509)
-                        )
+                        Text("▶", color = Color(0xFF050509))
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SuggestionButton(
+    text: String,
+    onClick: () -> Unit
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier
+            .height(32.dp)
+            .background(Color(0xFF141427), RoundedCornerShape(8.dp))
+            .border(1.dp, Color(0xFF40406A), RoundedCornerShape(8.dp))
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            color = Color(0xFFD9D9FF)
+        )
     }
 }
