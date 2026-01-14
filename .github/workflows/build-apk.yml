@@ -23,7 +23,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Clean Gradle project
-      - run: ./gradlew clean
+        run: ./gradlew clean
            
       - name: Build APK
         run: |
