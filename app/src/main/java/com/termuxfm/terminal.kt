@@ -1,26 +1,3 @@
-package com.termuxfm
-
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.InputStreamReader
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalScreen(
@@ -205,7 +182,14 @@ fun TerminalScreen(
                             color = neonGreen
                         )
                     },
-                    placeholder = { Text("ls, pwd, cd .., etc.") }
+                    placeholder = { Text("ls, pwd, cd .., etc.") },
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedLabelColor = neonGreen,
+                        focusedBorderColor = neonGreen,
+                        unfocusedBorderColor = neonGreen.copy(alpha = 0.5f),
+                        textColor = Color.White,
+                        backgroundColor = panelDark
+                    )
                 )
 
                 Row(
