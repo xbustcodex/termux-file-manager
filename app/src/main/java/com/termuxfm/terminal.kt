@@ -12,27 +12,16 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -67,6 +56,7 @@ class TerminalActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalScreen(startPath: String) {
     val clipboardManager = LocalClipboardManager.current
@@ -188,12 +178,7 @@ fun TerminalScreen(startPath: String) {
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    brush = Brush.linearGradient(
-                        listOf(
-                            Color(0xFF00F5A0),
-                            Color(0xFF9B5BFF)
-                        )
-                    ),
+                    color = Color(0xFF40406A),
                     shape = RoundedCornerShape(16.dp)
                 )
                 .background(Color(0xFF050509), RoundedCornerShape(16.dp))
@@ -238,16 +223,22 @@ fun TerminalScreen(startPath: String) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             suggestions.forEach { s ->
-                AssistChip(
+                SuggestionChip(
                     onClick = {
                         command = if (command.isBlank()) s else "$command $s"
                     },
-                    label = { Text(text = s, fontSize = 11.sp) },
-                    colors = AssistChipDefaults.assistChipColors(
+                    label = {
+                        Text(
+                            text = s, 
+                            fontSize = 11.sp,
+                            color = Color(0xFFD9D9FF)
+                        )
+                    },
+                    colors = ChipDefaults.suggestionChipColors(
                         containerColor = Color(0xFF141427),
                         labelColor = Color(0xFFD9D9FF)
                     ),
-                    border = AssistChipDefaults.assistChipBorder(
+                    border = ChipDefaults.suggestionChipBorder(
                         borderColor = Color(0xFF40406A),
                         borderWidth = 1.dp
                     )
@@ -335,13 +326,11 @@ fun TerminalScreen(startPath: String) {
                     }
                 ),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
+                    textColor = Color.White,
                     cursorColor = Color(0xFF84FFB8),
                     focusedBorderColor = Color(0xFF84FFB8),
                     unfocusedBorderColor = Color(0xFF9B5BFF),
-                    focusedContainerColor = Color(0xFF101018),
-                    unfocusedContainerColor = Color(0xFF101018)
+                    containerColor = Color(0xFF101018)
                 ),
                 trailingIcon = {
                     Row {
@@ -394,14 +383,14 @@ fun TerminalScreen(startPath: String) {
                 },
                 modifier = Modifier
                     .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 Color(0xFF00F5A0),
                                 Color(0xFF9B5BFF)
                             )
-                        ),
-                        shape = RoundedCornerShape(14.dp)
+                        )
                     )
             ) {
                 Icon(
@@ -412,4 +401,24 @@ fun TerminalScreen(startPath: String) {
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SuggestionChip(
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    colors: ChipColors = ChipDefaults.suggestionChipColors(),
+    border: ChipBorder? = null,
+    enabled: Boolean = true
+) {
+    androidx.compose.material3.AssistChip(
+        onClick = onClick,
+        label = label,
+        modifier = modifier,
+        colors = colors,
+        border = border,
+        enabled = enabled
+    )
 }
