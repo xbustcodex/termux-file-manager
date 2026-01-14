@@ -12,9 +12,20 @@ android {
         minSdk 26
         targetSdk 34
         versionCode 1
-        versionName "2.0"
+        versionName "3.0"
     }
 
+    signingConfigs { 
+        release { 
+            if (project.hasProperty("KEYSTORE_FILE")) {
+                storeFile file(KEYSTORE_FILE)
+                storePassword storePassword
+                keyAlias keyAlias
+                keyPassword keyPassword
+            }
+        }
+    }
+    
     buildTypes {
         release {
             minifyEnabled false
