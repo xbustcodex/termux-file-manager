@@ -75,6 +75,7 @@ fun TermuxFileManagerApp(storage: StorageProvider) {
         terminalPath != null -> {
             TerminalScreen(
                 startPath = terminalPath!!,
+                onBack = { terminalPath = null }
                 // onBack parameter doesn't exist in TerminalScreen, so remove it
             )
         }
