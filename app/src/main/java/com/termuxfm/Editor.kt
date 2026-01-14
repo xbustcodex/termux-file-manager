@@ -2,66 +2,92 @@ package com.termuxfm
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(
     storage: StorageProvider,
     filePath: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onFileSaved: (() -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-
-    var content by remember { mutableStateOf("") }
+    
+    var content by rememberSaveable { mutableStateOf("") }
+    var originalContent by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var status by remember { mutableStateOf<String?>(null) }
     var showRunDialog by remember { mutableStateOf(false) }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+    var autoSaveEnabled by remember { mutableStateOf(true) }
+    var lineCount by remember { mutableStateOf(1) }
+    var hasUnsavedChanges by remember { 
+        mutableStateOf(false) 
+    }
 
-    val fileName = remember(filePath) { filePath.trimEnd('/').substringAfterLast("/") }
+    val fileName = remember(filePath) { 
+        filePath.trimEnd('/').substringAfterLast("/") 
+    }
 
+    // Calculate line count when content changes
+    LaunchedEffect(content) {
+        lineCount = content.count { it == '\n' } + 1
+        hasUnsavedChanges = content != originalContent
+        
+        // Auto-save after delay if enabled and there are changes
+        if (autoSaveEnabled && hasUnsavedChanges) {
+            delay(2000) // 2 second delay before auto-save
+            if (hasUnsavedChanges) {
+                scope.launch {
+                    try {
+                        storage.writeFile(filePath, content)
+                        originalContent = content
+                        status = "Auto-saved"
+                        // Clear status after 1.5 seconds
+                        delay(1500)
+                        status = null
+                    } catch (e: Exception) {
+                        status = "Auto-save failed"
+                    }
+                }
+            }
+        }
+    }
+
+    // Load file content
     LaunchedEffect(filePath) {
         loading = true
         status = null
         try {
             val loaded = storage.readFile(filePath)
+            originalContent = loaded
             val type = detectScriptType(filePath)
             val shebang = defaultShebangFor(type)
 
             content = if (shebang != null) {
                 when {
-                    // Brand-new or empty script → inject shebang
-                    loaded.isBlank() -> shebang + "\n\n"
-
-                    // No existing shebang at the top → prepend ours
-                    !loaded.startsWith("#!") -> shebang + "\n" + loaded
-
-                    // Already has a shebang → leave as-is
+                    loaded.isBlank() -> "$shebang\n\n"
+                    !loaded.startsWith("#!") -> "$shebang\n$loaded"
                     else -> loaded
                 }
             } else {
-                // Not a known script type → just load normally
                 loaded
             }
         } catch (e: Exception) {
@@ -72,65 +98,216 @@ fun EditorScreen(
         }
     }
 
+    // Handle back navigation with unsaved changes check
+    val handleBack = {
+        if (hasUnsavedChanges) {
+            showUnsavedChangesDialog = true
+        } else {
+            onBack()
+        }
+    }
+
+    // Save function
+    val saveFile = {
+        scope.launch {
+            try {
+                storage.writeFile(filePath, content)
+                originalContent = content
+                hasUnsavedChanges = false
+                status = "Saved ✅"
+                onFileSaved?.invoke()
+                // Clear status after 2 seconds
+                delay(2000)
+                status = null
+            } catch (e: Exception) {
+                status = "Save error: ${e.message}"
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(fileName) },
+                title = { 
+                    Column {
+                        Text(fileName, maxLines = 1)
+                        if (status != null) {
+                            Text(
+                                status!!,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
-                    TextButton(onClick = onBack) { Text("Back") }
+                    IconButton(onClick = handleBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 },
                 actions = {
-                    TextButton(
-                        onClick = {
-                            scope.launch {
-                                try {
-                                    storage.writeFile(filePath, content)
-                                    status = "Saved ✅"
-                                } catch (e: Exception) {
-                                    status = "Save error: ${e.message}"
-                                }
-                            }
-                        }
-                    ) { Text("Save") }
-
-                    TextButton(
+                    // Line counter
+                    Text(
+                        "Lines: $lineCount",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    
+                    // Save button
+                    IconButton(
+                        onClick = saveFile,
+                        enabled = hasUnsavedChanges
+                    ) {
+                        Text(
+                            "Save",
+                            color = if (hasUnsavedChanges) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        )
+                    }
+                    
+                    // Run button
+                    IconButton(
                         onClick = {
                             if (isRunnableScript(filePath)) {
                                 showRunDialog = true
                             } else {
-                                status = "Not a script file (.sh, .py, .bash, .js, .php)"
+                                Toast.makeText(
+                                    context,
+                                    "Not a runnable script (.sh, .py, .bash, .js, .php)",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
-                    ) { Text("Run") }
+                    ) {
+                        Text("Run")
+                    }
                 }
             )
+        },
+        floatingActionButton = {
+            if (hasUnsavedChanges) {
+                FloatingActionButton(
+                    onClick = saveFile,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text("SAVE", fontSize = 12.sp)
+                }
+            }
         }
-    ) { pad ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .padding(pad)
+                .padding(paddingValues)
                 .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (status != null) {
-                Text(status!!)
-            }
-
             if (loading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            OutlinedTextField(
-                value = content,
-                onValueChange = { content = it },
-                modifier = Modifier.fillMaxSize(),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = FontFamily.Monospace
-                ),
-                singleLine = false
-            )
+            // Editor with line numbers
+            Row(modifier = Modifier.fillMaxSize()) {
+                // Line numbers column
+                Column(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .fillMaxHeight()
+                        .padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    (1..lineCount).forEach { line ->
+                        Text(
+                            text = line.toString(),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = FontFamily.Monospace
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth(),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                // Divider
+                Divider(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(1.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+
+                // Main editor
+                CompositionLocalProvider(
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = MaterialTheme.colorScheme.primary,
+                        backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                    )
+                ) {
+                    OutlinedTextField(
+                        value = content,
+                        onValueChange = { content = it },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = 8.dp),
+                        textStyle = TextStyle(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp
+                        ),
+                        singleLine = false,
+                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Color.Transparent
+                        )
+                    )
+                }
+            }
         }
+    }
+
+    // Unsaved changes dialog
+    if (showUnsavedChangesDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesDialog = false },
+            title = { Text("Unsaved Changes") },
+            text = { Text("You have unsaved changes. What would you like to do?") },
+            confirmButton = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextButton(
+                        onClick = {
+                            saveFile()
+                            showUnsavedChangesDialog = false
+                            onBack()
+                        }
+                    ) {
+                        Text("Save & Exit")
+                    }
+                    TextButton(
+                        onClick = {
+                            showUnsavedChangesDialog = false
+                            onBack()
+                        }
+                    ) {
+                        Text("Exit Without Saving")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showUnsavedChangesDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     // Run dialog
@@ -139,7 +316,7 @@ fun EditorScreen(
         val workDir = absPath?.substringBeforeLast('/', "/data/data/com.termux/files/home")
 
         if (absPath == null) {
-            LaunchedEffect(filePath) {
+            LaunchedEffect(showRunDialog) {
                 Toast.makeText(
                     context,
                     "Cannot resolve script path for this storage provider",
@@ -150,54 +327,99 @@ fun EditorScreen(
         } else {
             AlertDialog(
                 onDismissRequest = { showRunDialog = false },
-                title = { Text("Run script") },
-                text = { Text("What do you want to do with:\n$filePath") },
+                title = { Text("Run Script") },
+                text = { 
+                    Column {
+                        Text("Script: ${fileName}")
+                        Text("Path: ${absPath}", fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Divider()
+                    }
+                },
                 confirmButton = {
-                    // Normal user run in Termux
-                    TextButton(onClick = {
-                        TermuxRunner.runScriptInTerminal(
-                            context = context,
-                            absolutePath = absPath,
-                            workDir = workDir
-                        )
-                        showRunDialog = false
-                    }) {
+                    // Run in Termux
+                    TextButton(
+                        onClick = {
+                            TermuxRunner.runScriptInTerminal(
+                                context = context,
+                                absolutePath = absPath,
+                                workDir = workDir
+                            )
+                            showRunDialog = false
+                            Toast.makeText(context, "Running in Termux...", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
                         Text("Run in Termux")
                     }
                 },
                 dismissButton = {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Additional run options
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            TextButton(onClick = {
-                                // Run with su in Termux
-                                TermuxRunner.runScriptWithSuInTerminal(
-                                    context = context,
-                                    absolutePath = absPath,
-                                    workDir = workDir
-                                )
-                                showRunDialog = false
-                            }) {
-                                Text("Run with su")
+                            TextButton(
+                                onClick = {
+                                    TermuxRunner.runScriptWithSuInTerminal(
+                                        context = context,
+                                        absolutePath = absPath,
+                                        workDir = workDir
+                                    )
+                                    showRunDialog = false
+                                    Toast.makeText(context, "Running with su...", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Text("Run as Root")
                             }
 
-                            TextButton(onClick = {
-                                // Background, normal user
-                                TermuxRunner.runScriptInBackground(
-                                    context = context,
-                                    absolutePath = absPath,
-                                    workDir = workDir
-                                )
-                                showRunDialog = false
-                            }) {
+                            TextButton(
+                                onClick = {
+                                    TermuxRunner.runScriptInBackground(
+                                        context = context,
+                                        absolutePath = absPath,
+                                        workDir = workDir
+                                    )
+                                    showRunDialog = false
+                                    Toast.makeText(context, "Running in background...", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
                                 Text("Background")
                             }
                         }
+                        
+                        // Test syntax button for bash scripts
+                        if (filePath.endsWith(".sh", ignoreCase = true)) {
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        try {
+                                            val testCommand = "bash -n \"$absPath\""
+                                            // You could implement a syntax check function here
+                                            Toast.makeText(
+                                                context,
+                                                "Syntax check for bash scripts would go here",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(
+                                                context,
+                                                "Syntax check failed: ${e.message}",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                    showRunDialog = false
+                                }
+                            ) {
+                                Text("Check Syntax")
+                            }
+                        }
 
-                        TextButton(onClick = { showRunDialog = false }) {
+                        TextButton(
+                            onClick = { showRunDialog = false }
+                        ) {
                             Text("Cancel")
                         }
                     }
@@ -209,16 +431,10 @@ fun EditorScreen(
 
 private fun isRunnableScript(path: String): Boolean {
     val lower = path.lowercase()
-    return listOf(".sh", ".bash", ".py", ".js", ".php")
+    return listOf(".sh", ".bash", ".py", ".js", ".php", ".rb", ".pl", ".lua")
         .any { lower.endsWith(it) }
 }
 
-/**
- * Map logical file path to an absolute path Termux understands.
- *
- * - For SAF (Termux home): /data/data/com.termux/files/home + path
- * - For legacy sdcard workspace: /sdcard/TermuxProjects + path
- */
 private fun resolveScriptAbsolutePath(
     storageProvider: StorageProvider,
     logicalPath: String
@@ -232,22 +448,35 @@ private fun resolveScriptAbsolutePath(
     }
 }
 
-fun detectScriptType(path: String): String {
+private fun detectScriptType(path: String): String {
     val lower = path.lowercase()
     return when {
-        lower.endsWith(".sh")  -> "bash"
-        lower.endsWith(".py")  -> "python"
-        lower.endsWith(".js")  -> "node"
+        lower.endsWith(".sh") || lower.endsWith(".bash") -> "bash"
+        lower.endsWith(".py") -> "python"
+        lower.endsWith(".js") -> "node"
         lower.endsWith(".php") -> "php"
+        lower.endsWith(".rb") -> "ruby"
+        lower.endsWith(".pl") -> "perl"
+        lower.endsWith(".lua") -> "lua"
         else -> "unknown"
     }
 }
 
-fun defaultShebangFor(type: String): String? =
+private fun defaultShebangFor(type: String): String? =
     when (type) {
-        "bash"   -> "#!/data/data/com.termux/files/usr/bin/bash"
+        "bash" -> "#!/data/data/com.termux/files/usr/bin/bash"
         "python" -> "#!/data/data/com.termux/files/usr/bin/python"
-        "node"   -> "#!/data/data/com.termux/files/usr/bin/node"
-        "php"    -> "#!/data/data/com.termux/files/usr/bin/php"
+        "node" -> "#!/data/data/com.termux/files/usr/bin/node"
+        "php" -> "#!/data/data/com.termux/files/usr/bin/php"
+        "ruby" -> "#!/data/data/com.termux/files/usr/bin/ruby"
+        "perl" -> "#!/data/data/com.termux/files/usr/bin/perl"
+        "lua" -> "#!/data/data/com.termux/files/usr/bin/lua"
         else -> null
     }
+
+// Extension function for Toast
+private fun Toast.showShort(message: String) {
+    setText(message)
+    duration = Toast.LENGTH_SHORT
+    show()
+}
