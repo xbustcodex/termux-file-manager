@@ -1,309 +1,414 @@
 package com.termuxfm
 
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+class TerminalActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val startPath = intent.getStringExtra("path") ?: "/"
+
+        setContent {
+            MaterialTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color(0xFF050509)
+                ) {
+                    TerminalScreen(startPath = startPath)
+                }
+            }
+        }
+    }
+}
+
 @Composable
-fun TerminalScreen(
-    startingDir: String,
-    onBack: () -> Unit
-) {
-    val scope = rememberCoroutineScope()
+fun TerminalScreen(startPath: String) {
     val clipboardManager = LocalClipboardManager.current
+    val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
 
-    var currentDir by remember { mutableStateOf(startingDir.ifBlank { "/" }) }
+    var workingDir by remember { mutableStateOf(File(startPath)) }
     var command by remember { mutableStateOf("") }
-    var output by remember { mutableStateOf("") }
+    var outputLines by remember { mutableStateOf(listOf<String>()) }
     var isRunning by remember { mutableStateOf(false) }
-    var showClearConfirm by remember { mutableStateOf(false) }
+    var runAsRoot by remember { mutableStateOf(false) }
 
-    // simple history list – newest first
-    var history by remember { mutableStateOf(listOf<String>()) }
+    // History (newest first)
+    val history = remember { mutableStateListOf<String>() }
+    var historyIndex by remember { mutableStateOf(-1) }
 
-    val scrollState = rememberScrollState()
+    // Simple autocomplete suggestions
+    val suggestions = listOf(
+        "ls",
+        "ls -la",
+        "pwd",
+        "cd ..",
+        "mkdir ",
+        "rm ",
+        "cat ",
+        "chmod +x "
+    )
 
-    // Append output (with crude error marker)
-    fun appendOutput(text: String, isError: Boolean = false) {
-        val line = if (isError) "❌ $text" else text
-        output = if (output.isBlank()) line else output + "\n" + line
+    val listState = rememberLazyListState()
+
+    fun appendOutput(text: String) {
+        if (text.isEmpty()) return
+        outputLines = outputLines + text.lines()
     }
 
-    suspend fun runShellCommand(cmd: String) {
-        // Handle simple `cd` locally (virtual)
-        if (cmd.startsWith("cd ")) {
-            val target = cmd.removePrefix("cd").trim()
-            currentDir = if (target.startsWith("/")) {
-                target
-            } else {
-                val base = currentDir.trimEnd('/')
-                (if (base.isBlank()) "/" else base) + "/" + target
-            }
-            appendOutput("$currentDir \$ $cmd")
-            appendOutput("→ (virtual) directory changed to $currentDir")
-            return
-        }
+    fun runCommand(rawCommand: String) {
+        val trimmed = rawCommand.trim()
+        if (trimmed.isEmpty() || isRunning) return
 
-        isRunning = true
-        appendOutput("$currentDir \$ $cmd")
+        history.add(0, trimmed)
+        historyIndex = -1
+        command = ""
 
-        val result = withContext(Dispatchers.IO) {
+        appendOutput("$ $trimmed")
+
+        coroutineScope.launch(Dispatchers.IO) {
+            isRunning = true
             try {
-                val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", cmd))
-                val stdout = BufferedReader(InputStreamReader(process.inputStream))
-                val stderr = BufferedReader(InputStreamReader(process.errorStream))
+                val fullCommand = if (runAsRoot) {
+                    // Termux usually executes root commands via su -c
+                    "su -c \"$trimmed\""
+                } else {
+                    trimmed
+                }
 
-                val outText = stdout.readText()
-                val errText = stderr.readText()
+                val pb = ProcessBuilder("sh", "-c", fullCommand)
+                    .directory(workingDir)
+                    .redirectErrorStream(true)
 
-                val code = process.waitFor()
-                Triple(outText, errText, code)
-            } catch (e: Exception) {
-                Triple("", "Error: ${e.message}", -1)
+                val process = pb.start()
+                val textOut = process.inputStream.bufferedReader().readText()
+                val exitCode = process.waitFor()
+
+                withContext(Dispatchers.Main) {
+                    if (textOut.isNotBlank()) {
+                        appendOutput(textOut.trimEnd())
+                    }
+                    appendOutput("[exit code $exitCode]")
+                }
+            } catch (t: Throwable) {
+                withContext(Dispatchers.Main) {
+                    appendOutput("Error: ${t.message}")
+                }
+            } finally {
+                isRunning = false
             }
         }
-
-        val (outText, errText, code) = result
-
-        if (outText.isNotBlank()) {
-            appendOutput(outText.trimEnd())
-        }
-        if (errText.isNotBlank()) {
-            appendOutput(errText.trimEnd(), isError = true)
-        }
-        appendOutput("→ exit code: $code")
-
-        // update history (no duplicate at top, cap 20)
-        if (cmd.isNotBlank() && history.firstOrNull() != cmd) {
-            history = listOf(cmd) + history.take(19)
-        }
-
-        isRunning = false
     }
 
-    // Auto-scroll on new output
-    LaunchedEffect(output) {
-        if (output.isNotBlank()) {
-            scrollState.animateScrollTo(scrollState.maxValue)
+    // Auto-scroll output when new lines appear
+    LaunchedEffect(outputLines.size) {
+        if (outputLines.isNotEmpty()) {
+            listState.animateScrollToItem(outputLines.lastIndex)
         }
     }
 
-    // Dragon-theme colors
-    val bgDark = Color(0xFF05060A)
-    val panelDark = Color(0xFF111319)
-    val neonGreen = Color(0xFF00FF7F)
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            "Terminal",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = neonGreen
-                        )
-                        Text(
-                            currentDir,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                    }
-                },
-                navigationIcon = {
-                    TextButton(onClick = onBack) {
-                        Text("Back", color = neonGreen)
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = { showClearConfirm = true },
-                        enabled = output.isNotBlank()
-                    ) {
-                        Text("Clear", color = neonGreen)
-                    }
-                    TextButton(
-                        onClick = {
-                            if (output.isNotBlank()) {
-                                clipboardManager.setText(AnnotatedString(output))
-                                appendOutput("→ Output copied to clipboard")
-                            }
-                        },
-                        enabled = output.isNotBlank()
-                    ) {
-                        Text("Copy", color = neonGreen)
-                    }
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF050509),
+                        Color(0xFF050509),
+                        Color(0xFF080012)
+                    )
+                )
             )
-        }
-    ) { pad ->
-        Column(
-            modifier = Modifier
-                .padding(pad)
-                .fillMaxSize()
-                .background(bgDark)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+            .padding(12.dp)
+    ) {
+        // Header
+        Text(
+            text = "Termux Terminal",
+            color = Color(0xFFB0F4FF),
+            fontSize = 18.sp,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Text(
+            text = "Dir: ${workingDir.absolutePath}",
+            color = Color(0xFF8A8AFF),
+            fontSize = 12.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
-            // Output panel
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = panelDark
-                )
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp)
-                        .verticalScroll(scrollState)
-                ) {
-                    Text(
-                        text = if (output.isBlank())
-                            "No output yet.\nType a command below and press Run."
-                        else output,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            color = neonGreen
+        // Output window
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color(0xFF00F5A0),
+                            Color(0xFF9B5BFF)
                         )
-                    )
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .background(Color(0xFF050509), RoundedCornerShape(16.dp))
+                .padding(10.dp)
+        ) {
+            if (outputLines.isEmpty()) {
+                Text(
+                    text = "Command output will appear here…",
+                    color = Color(0xFF555566),
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(outputLines) { line ->
+                        val isError = line.contains("error", ignoreCase = true) ||
+                                line.contains("denied", ignoreCase = true) ||
+                                line.contains("not found", ignoreCase = true)
+
+                        Text(
+                            text = line,
+                            color = if (isError) Color(0xFFFF6B6B) else Color(0xFFE5E5F5),
+                            fontSize = 13.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
                 }
             }
+        }
 
-            // Command input + controls
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    value = command,
-                    onValueChange = { command = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = {
-                        Text(
-                            if (isRunning) "Running…" else "Command",
-                            color = neonGreen
-                        )
+        // Suggestions row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            suggestions.forEach { s ->
+                AssistChip(
+                    onClick = {
+                        command = if (command.isBlank()) s else "$command $s"
                     },
-                    placeholder = { Text("ls, pwd, cd .., etc.") },
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        focusedLabelColor = neonGreen,
-                        focusedBorderColor = neonGreen,
-                        unfocusedBorderColor = neonGreen.copy(alpha = 0.5f),
-                        textColor = Color.White,
-                        backgroundColor = panelDark
+                    label = { Text(text = s, fontSize = 11.sp) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = Color(0xFF141427),
+                        labelColor = Color(0xFFD9D9FF)
+                    ),
+                    border = AssistChipDefaults.assistChipBorder(
+                        borderColor = Color(0xFF40406A),
+                        borderWidth = 1.dp
                     )
                 )
+            }
+        }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        enabled = !isRunning && command.isNotBlank(),
-                        onClick = {
-                            val cmd = command.trim()
-                            if (cmd.isNotBlank()) {
-                                command = ""
-                                scope.launch {
-                                    runShellCommand(cmd)
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = neonGreen,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Text(if (isRunning) "Working…" else "Run")
-                    }
+        // Root toggle + copy output
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = runAsRoot,
+                    onCheckedChange = { runAsRoot = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color(0xFF050509),
+                        checkedTrackColor = Color(0xFF00F5A0),
+                        uncheckedThumbColor = Color(0xFF8888AA),
+                        uncheckedTrackColor = Color(0xFF303048)
+                    )
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (runAsRoot) "Run as root" else "Run as normal user",
+                    color = Color(0xFFCCCCF0),
+                    fontSize = 12.sp
+                )
+            }
 
-                    TextButton(
-                        enabled = !isRunning && command.isNotBlank(),
-                        onClick = { command = "" }
-                    ) {
-                        Text("Clear input", color = neonGreen)
-                    }
+            TextButton(
+                onClick = {
+                    val joined = outputLines.joinToString("\n")
+                    clipboardManager.setText(AnnotatedString(joined))
                 }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = "Copy output",
+                    tint = Color(0xFFB0F4FF)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Copy output",
+                    color = Color(0xFFB0F4FF),
+                    fontSize = 12.sp
+                )
+            }
+        }
 
-                // Quick history chips (top 3)
-                if (history.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "Recent commands",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = neonGreen
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            history.take(3).forEach { cmd ->
-                                TextButton(
-                                    onClick = { command = cmd },
-                                    modifier = Modifier
-                                        .clip(MaterialTheme.shapes.small)
-                                        .border(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outline,
-                                            MaterialTheme.shapes.small
-                                        )
-                                ) {
-                                    Text(
-                                        cmd,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 1,
-                                        color = neonGreen
-                                    )
+        // Command input + history controls
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = command,
+                onValueChange = { command = it },
+                modifier = Modifier.weight(1f),
+                maxLines = 4, // multi-line command support
+                label = {
+                    Text(
+                        text = "Command",
+                        color = Color(0xFF84FFB8)
+                    )
+                },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 14.sp,
+                    color = Color.White
+                ),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrect = false,
+                    imeAction = ImeAction.Send
+                ),
+                keyboardActions = KeyboardActions(
+                    onSend = {
+                        runCommand(command)
+                        focusManager.clearFocus()
+                    }
+                ),
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = Color(0xFF84FFB8),
+                    focusedBorderColor = Color(0xFF84FFB8),
+                    unfocusedBorderColor = Color(0xFF9B5BFF),
+                    focusedContainerColor = Color(0xFF101018),
+                    unfocusedContainerColor = Color(0xFF101018)
+                ),
+                trailingIcon = {
+                    Row {
+                        IconButton(
+                            onClick = {
+                                // history up (older)
+                                if (history.isNotEmpty()) {
+                                    val nextIndex = (if (historyIndex == -1) 0 else historyIndex + 1)
+                                        .coerceAtMost(history.lastIndex)
+                                    historyIndex = nextIndex
+                                    command = history[historyIndex]
                                 }
                             }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowUpward,
+                                contentDescription = "Previous command",
+                                tint = Color(0xFFB0F4FF)
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                // history down (newer)
+                                if (history.isNotEmpty() && historyIndex > 0) {
+                                    val nextIndex = (historyIndex - 1).coerceAtLeast(0)
+                                    historyIndex = nextIndex
+                                    command = history[historyIndex]
+                                } else if (historyIndex == 0) {
+                                    historyIndex = -1
+                                    command = ""
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowDownward,
+                                contentDescription = "Next command",
+                                tint = Color(0xFFB0F4FF)
+                            )
                         }
                     }
                 }
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            IconButton(
+                onClick = {
+                    runCommand(command)
+                    focusManager.clearFocus()
+                },
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFF00F5A0),
+                                Color(0xFF9B5BFF)
+                            )
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Run command",
+                    tint = Color(0xFF050509)
+                )
             }
         }
-    }
-
-    // Clear output dialog
-    if (showClearConfirm) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirm = false },
-            title = { Text("Clear output") },
-            text = { Text("Clear all terminal output from this session?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    output = ""
-                    showClearConfirm = false
-                }) {
-                    Text("Clear", color = neonGreen)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) {
-                    Text("Cancel", color = neonGreen)
-                }
-            }
-        )
     }
 }
