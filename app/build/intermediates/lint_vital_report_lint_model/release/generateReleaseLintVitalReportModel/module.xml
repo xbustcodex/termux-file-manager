@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="C:\Users\xkali\termux-file-manager-main\termux-file-manager-main\app"
+    name=":app"
+    type="APP"
+    maven="termux-file-manager:app:"
+    agpVersion="8.2.2"
+    buildFolder="build"
+    bootClassPath="C:\Android\Sdk\platforms\android-34\android.jar;C:\Android\Sdk\build-tools\34.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-34"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

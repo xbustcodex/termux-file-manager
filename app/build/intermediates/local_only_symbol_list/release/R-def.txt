@@ -1,0 +1,8 @@
+R_DEF: Internal format may change without notice
+local
+mipmap ic_launcher
+mipmap ic_launcher_hdpi
+mipmap ic_launcher_xhdpi
+mipmap ic_launcher_xxhdpi
+mipmap ic_launcher_xxxhdpi
+string app_name

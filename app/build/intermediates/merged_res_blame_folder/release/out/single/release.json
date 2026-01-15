@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.termuxfm.app-merged_res-40:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.termuxfm.app-main-41:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.termuxfm.app-merged_res-40:/mipmap-hdpi_ic_launcher_hdpi.png.flat",
+        "source": "com.termuxfm.app-main-41:/mipmap-hdpi/ic_launcher_hdpi.png"
+    },
+    {
+        "merged": "com.termuxfm.app-merged_res-40:/mipmap-xxhdpi_ic_launcher_xxhdpi.png.flat",
+        "source": "com.termuxfm.app-main-41:/mipmap-xxhdpi/ic_launcher_xxhdpi.png"
+    },
+    {
+        "merged": "com.termuxfm.app-merged_res-40:/mipmap-xhdpi_ic_launcher_xhdpi.png.flat",
+        "source": "com.termuxfm.app-main-41:/mipmap-xhdpi/ic_launcher_xhdpi.png"
+    },
+    {
+        "merged": "com.termuxfm.app-merged_res-40:/mipmap-xxxhdpi_ic_launcher_xxxhdpi.png.flat",
+        "source": "com.termuxfm.app-main-41:/mipmap-xxxhdpi/ic_launcher_xxxhdpi.png"
+    }
+]
