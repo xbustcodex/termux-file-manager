@@ -22,12 +22,35 @@ jobs:
     - name: Set up Android SDK
       uses: android-actions/setup-android@v3
 
+    # 🔑 Decode the keystore from Base64 secret into app/release-key.jks
+    - name: Decode Android keystore
+      run: |
+        mkdir -p app
+        echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > app/release-key.jks
+      env:
+        ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+    # 📄 Create gradle.properties with signing values (mapping from your secrets)
+    - name: Configure signing for release
+      run: |
+        cat <<EOF >> gradle.properties
+storeFile=${KEYSTORE_FILE}
+storePassword=${KEYSTORE_PASSWORD}
+keyAlias=${KEY_ALIAS}
+keyPassword=${KEY_PASSWORD}
+EOF
+      env:
+        KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
     - name: Clean Gradle project
       run: |
         chmod +x gradlew
         ./gradlew clean
 
-    - name: Build APK
+    - name: Build APK (Release)
       run: |
         chmod +x gradlew
         ./gradlew assembleRelease --no-daemon
