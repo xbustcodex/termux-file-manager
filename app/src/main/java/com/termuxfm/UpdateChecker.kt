@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
@@ -69,4 +72,41 @@ fun openUpdateUrl(context: Context, url: String) {
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     context.startActivity(intent)
+}
+
+class UpdateChecker(private val context: Context) {
+
+    // Simple scope for running the check on main + IO
+    private val scope = CoroutineScope(Dispatchers.Main)
+
+    fun checkForUpdates() {
+        scope.launch {
+            val info = fetchUpdateInfo()
+            if (info == null) {
+                Toast.makeText(
+                    context,
+                    "Failed to check for updates",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@launch
+            }
+
+            val current = getCurrentAppVersion(context)
+            if (isNewerVersion(info.latestVersion, current)) {
+                Toast.makeText(
+                    context,
+                    "New version ${info.latestVersion} available",
+                    Toast.LENGTH_SHORT
+                ).show()
+                // Open the APK URL in browser / downloader
+                openUpdateUrl(context, info.apkUrl)
+            } else {
+                Toast.makeText(
+                    context,
+                    "You’re already on the latest version ($current)",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
 }
