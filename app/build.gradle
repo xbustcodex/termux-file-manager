@@ -86,7 +86,7 @@ dependencies {
     implementation "com.squareup.okhttp3:okhttp:4.9.0"
 
     // Gson for JSON parsing
-    implementation "com.google.code.gson:2.8.7"
+    implementation "com.google.code.gson:gson:2.8.7"
     
     // SAF
     implementation "androidx.documentfile:documentfile:1.0.1"
@@ -95,3 +95,4 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
    
 }
+ 
