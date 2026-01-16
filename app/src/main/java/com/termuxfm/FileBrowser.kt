@@ -449,12 +449,15 @@ private fun DrawerContent(
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                // 👇 NEW: Update button ABOVE Home
                 Button(
                     onClick = { updateChecker.checkForUpdates() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("🔄  Check for updates")
                 }
+
                 Button(
                     onClick = { onNavigate("/") },
                     modifier = Modifier.fillMaxWidth()
@@ -513,7 +516,7 @@ private fun DrawerContent(
         }
     }
 
-    // 🔹 This IF BLOCK *belongs inside* DrawerContent
+    // 🔹 Editor prompt stays the same
     if (showEditorPrompt) {
         NamePromptDialog(
             title = "Open in Text Editor",
@@ -531,6 +534,7 @@ private fun DrawerContent(
         )
     }
 }
+
 
 
 // ---------------------------------------------------------
