@@ -1,19 +1,33 @@
 package com.termuxfm
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import android.net.Uri
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        private const val REQ_STORAGE_PERMS = 1001
+    }
 
     private val pickTree =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -26,6 +40,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 🔐 Ask for storage permissions / all-files access
+        ensureStoragePermissions()
+
         setContent {
             MaterialTheme {
                 Surface {
@@ -33,6 +50,77 @@ class MainActivity : ComponentActivity() {
                         onPickSafFolder = { pickTree.launch(null) }
                     )
                 }
+            }
+        }
+    }
+
+    /**
+     * Ask for the right kind of storage access on each Android version.
+     */
+    private fun ensureStoragePermissions() {
+        // Android 11+ (R, SDK 30): MANAGE_EXTERNAL_STORAGE ("All files access")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Toast.makeText(
+                    this,
+                    "Please grant 'All files access' so Termux File Manager can see all storage.",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                val uri = Uri.parse("package:$packageName")
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    uri
+                )
+                startActivity(intent)
+            }
+        } else {
+            // Android 6–10: classic READ/WRITE_EXTERNAL_STORAGE runtime permissions
+            val needed = mutableListOf<String>()
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                needed += Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                needed += Manifest.permission.WRITE_EXTERNAL_STORAGE
+            }
+
+            if (needed.isNotEmpty()) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    needed.toTypedArray(),
+                    REQ_STORAGE_PERMS
+                )
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == REQ_STORAGE_PERMS) {
+            val granted = grantResults.isNotEmpty() &&
+                    grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+
+            if (!granted) {
+                Toast.makeText(
+                    this,
+                    "Storage permissions denied – some features may not work.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
