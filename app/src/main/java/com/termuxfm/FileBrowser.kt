@@ -427,6 +427,10 @@ private fun DrawerContent(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showEditorPrompt by remember { mutableStateOf(false) }
 
+    // 👇 NEW: get context + UpdateChecker instance
+    val context = LocalContext.current
+    val updateChecker = remember { UpdateChecker(context) }
+
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState
@@ -443,6 +447,12 @@ private fun DrawerContent(
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = { updateChecker.checkForUpdates() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("🔄  Check for updates")
+                }
                 Button(
                     onClick = { onNavigate("/") },
                     modifier = Modifier.fillMaxWidth()
