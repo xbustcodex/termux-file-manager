@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.min
-import com.termuxfm.UpdateChecker
+
 
 
 // ---------------------------------------------------------
