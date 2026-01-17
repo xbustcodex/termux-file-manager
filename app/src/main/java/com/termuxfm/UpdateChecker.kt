@@ -76,37 +76,32 @@ fun openUpdateUrl(context: Context, url: String) {
 
 class UpdateChecker(private val context: Context) {
 
-    // Simple scope for running the check on main + IO
     private val scope = CoroutineScope(Dispatchers.Main)
 
     fun checkForUpdates() {
         scope.launch {
             val info = fetchUpdateInfo()
             if (info == null) {
-                Toast.makeText(
-                    context,
-                    "Failed to check for updates",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "Failed to check for updates", Toast.LENGTH_SHORT).show()
                 return@launch
             }
 
             val current = getCurrentAppVersion(context)
             if (isNewerVersion(info.latestVersion, current)) {
-                Toast.makeText(
-                    context,
-                    "New version ${info.latestVersion} available",
-                    Toast.LENGTH_SHORT
-                ).show()
-                // Open the APK URL in browser / downloader
-                openUpdateUrl(context, info.apkUrl)
+
+                // ✅ IMPORTANT: make sure apkUrl is DIRECT to the .apk asset
+                // example: https://github.com/<user>/<repo>/releases/download/v3.0.6/app-release.apk
+
+                val installer = ApkDownloadInstaller(context)
+                installer.downloadAndInstall(
+                    apkUrl = info.apkUrl,
+                    fileName = "TermuxFileManager-${info.latestVersion}.apk"
+                )
+
             } else {
-                Toast.makeText(
-                    context,
-                    "You’re already on the latest version ($current)",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "You’re already on the latest version ($current)", Toast.LENGTH_SHORT).show()
             }
         }
     }
 }
+
