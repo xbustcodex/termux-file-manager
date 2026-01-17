@@ -536,15 +536,14 @@ private fun DrawerContent(
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Filled.TextSnippet, contentDescription = null)
-                    Text("Open Text Editor", style = MaterialTheme.typography.bodyLarge)
+               Row(
+                   verticalAlignment = Alignment.CenterVertically,
+                   horizontalArrangement = Arrangement.spacedBy(8.dp),
+                   modifier = Modifier.weight(1f)
+               ) {
+                   Icon(Icons.Filled.TextSnippet, contentDescription = null)
+                   Text("Open Text Editor", style = MaterialTheme.typography.bodyLarge)
             }
-
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Other", style = MaterialTheme.typography.titleMedium)
@@ -580,8 +579,6 @@ private fun DrawerContent(
         )
     }
 }
-
-
 
 // ---------------------------------------------------------
 // Tools panel (right-side overlay)
