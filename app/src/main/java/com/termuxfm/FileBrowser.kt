@@ -7,6 +7,25 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.NoteAdd
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SystemUpdateAlt
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.TextSnippet
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -204,28 +223,28 @@ fun FileBrowserScreen(
                     )
                 },
                 navigationIcon = {
-                    TextButton(onClick = { showDrawer = true }) {
-                        Text("≡")
+                    IconButton(onClick = { showDrawer = true }) {
+                        Icon(Icons.Filled.Menu, contentDescription = "Menu")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { showToolsPanel = true }) {
-                        Text("🛠")
+                    IconButton(onClick = { showToolsPanel = true }) {
+                        Icon(Icons.Filled.Build, contentDescription = "Tools")
                     }
-                    TextButton(onClick = { refresh() }) {
-                        Text("⟳")
-                    }
+                    IconButton(onClick = { refresh() }) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+                   }
                 }
+
             )
         },
-        floatingActionButton = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                FloatingActionButton(onClick = { showNewFolderDialog = true }) {
-                    Text("+📁")
-                }
-                FloatingActionButton(onClick = { showNewFileDialog = true }) {
-                    Text("+📄")
-                }
+        FloatingActionButton(onClick = { showNewFolderDialog = true }) {
+            Icon(Icons.Filled.CreateNewFolder, contentDescription = "New folder")
+        }
+        FloatingActionButton(onClick = { showNewFileDialog = true }) {
+            Icon(Icons.Filled.NoteAdd, contentDescription = "New file")
+        }
+
             }
         }
     ) { pad ->
@@ -455,35 +474,58 @@ private fun DrawerContent(
                     onClick = { updateChecker.checkForUpdates() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("🔄  Check for updates")
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Filled.SystemUpdateAlt, contentDescription = null)
+                        Text("Check for updates")
+                    }
+
                 }
 
                 Button(
                     onClick = { onNavigate("/") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("🏠  Home")
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Filled.Home, contentDescription = null)
+                        Text("Home")
+                    }
+
                 }
                 OutlinedButton(
                     onClick = { onNavigate("/Scripts") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("📁  /Scripts")
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Filled.Folder, contentDescription = null)
+                        Text("/Scripts")
+                    }
+
                 }
                 OutlinedButton(
                     onClick = { onNavigate("/") },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("📁  Workspace root")
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Filled.Folder, contentDescription = null)
+                        Text("Workspace root")
+                    }
+
                 }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Tools", style = MaterialTheme.typography.titleMedium)
+
                 TextButton(onClick = onShowTools) {
-                    Text("🛠  Show tools panel")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                       Icon(Icons.Filled.Build, contentDescription = null)
+                       Text("Show tools panel")
+                   }
                 }
-            }
+             }
 
             // --- Text Editor ---
             Row(
