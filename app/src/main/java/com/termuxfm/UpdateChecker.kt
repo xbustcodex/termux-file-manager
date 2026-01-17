@@ -24,8 +24,11 @@ data class VersionInfo(
 private val httpClient = OkHttpClient()
 
 suspend fun fetchUpdateInfo(): VersionInfo? = withContext(Dispatchers.IO) {
+    val url = "https://xbustcodex.github.io/termux-file-manager/updates/version.json?t=${System.currentTimeMillis()}"
+
     val request = Request.Builder()
-        .url("https://xbustcodex.github.io/termux-file-manager/updates/version.json")
+        .url(url)
+        .header("Cache-Control", "no-cache")
         .build()
 
     try {
@@ -36,6 +39,7 @@ suspend fun fetchUpdateInfo(): VersionInfo? = withContext(Dispatchers.IO) {
             }
 
             val body = response.body?.string() ?: return@withContext null
+            Log.d("UpdateChecker", "version.json: $body") // helpful while testing
             return@withContext Gson().fromJson(body, VersionInfo::class.java)
         }
     } catch (e: Exception) {
