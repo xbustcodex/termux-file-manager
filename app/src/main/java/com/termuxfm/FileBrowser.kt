@@ -535,12 +535,15 @@ private fun DrawerContent(
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "📝 Open Text Editor",
-                    style = MaterialTheme.typography.bodyLarge,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
-                )
+                ) {
+                    Icon(Icons.Filled.TextSnippet, contentDescription = null)
+                    Text("Open Text Editor", style = MaterialTheme.typography.bodyLarge)
             }
+
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Other", style = MaterialTheme.typography.titleMedium)
@@ -893,21 +896,34 @@ private fun FileRow(
 ) {
     ListItem(
         headlineContent = {
-            Text(
-                (if (item.isDir) "📁 " else "📄 ") + item.name,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (item.isDir) Icons.Filled.Folder else Icons.Filled.Description,
+                    contentDescription = if (item.isDir) "Folder" else "File"
+                )
+                Text(
+                    item.name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+             }
         },
         supportingContent = {
             Text(item.path, maxLines = 1, overflow = TextOverflow.Ellipsis)
         },
         trailingContent = {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                TextButton(onClick = onRename) { Text("Rename") }
-                TextButton(onClick = onDelete) { Text("Delete") }
+                IconButton(onClick = onRename) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Rename")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                }
             }
-        },
+
         modifier = Modifier.clickable { onClick() }
     )
 }
