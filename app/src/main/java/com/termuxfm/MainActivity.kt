@@ -179,20 +179,17 @@ private fun AppRoot(onPickSafFolder: () -> Unit) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        openUpdateUrl(context, updateInfo!!.apkUrl)
+                        val installer = ApkDownloadInstaller(context)
+                        installer.downloadAndInstall(
+                            apkUrl = updateInfo!!.apkUrl,
+                            fileName = "TermuxFileManager-${updateInfo!!.latestVersion}.apk"
+                        )
                         updateInfo = null
                     }
                 ) {
                     Text("Update")
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { updateInfo = null }) {
-                    Text("Later")
-                }
-            }
-        )
-    }
 
     // ---- EXISTING STORAGE / UI LOGIC ----
     if (config.mode == WorkspaceMode.SAF && config.safTreeUri == null) {
