@@ -87,7 +87,10 @@ dependencies {
 
     // Gson for JSON parsing
     implementation "com.google.code.gson:gson:2.8.7"
-    
+
+    // Material Icons
+    implementation 'com.google.android.material:material:<latest_version>'
+
     // SAF
     implementation "androidx.documentfile:documentfile:1.0.1"
 
