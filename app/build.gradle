@@ -89,7 +89,9 @@ dependencies {
     implementation "com.google.code.gson:gson:2.8.7"
 
     // Material Icons
-    implementation 'com.google.android.material:material:<latest_version>'
+    implementation "androidx.compose.material3:material3"
+    implementation "androidx.compose.material:material-icons-core"
+    implementation "androidx.compose.material:material-icons-extended"
 
     // SAF
     implementation "androidx.documentfile:documentfile:1.0.1"
