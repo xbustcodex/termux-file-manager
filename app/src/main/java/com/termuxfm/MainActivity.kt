@@ -173,43 +173,52 @@ private fun AppRoot(onPickSafFolder: () -> Unit) {
                         updateInfo!!.changelog?.let {
                             append("Changes:\n$it")
                         }
-                    }
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val installer = ApkDownloadInstaller(context)
-                        installer.downloadAndInstall(
-                            apkUrl = updateInfo!!.apkUrl,
-                            fileName = "TermuxFileManager-${updateInfo!!.latestVersion}.apk"
-                        )
-                        updateInfo = null
-                    }
-                ) {
-                    Text("Update")
-                }
-            },
+                     }
+                 )
+             },
+             confirmButton = {
+                 TextButton(
+                     onClick = {
+                         val installer = ApkDownloadInstaller(context)
+                         installer.downloadAndInstall(
+                             apkUrl = updateInfo!!.apkUrl,
+                             fileName = "TermuxFileManager-${updateInfo!!.latestVersion}.apk"
+                         )
+                         updateInfo = null
+                     }
+                 ) {
+                     Text("Update")
+                 }
+             },
+             dismissButton = {
+                 TextButton(onClick = { updateInfo = null }) {
+                     Text("Later")
+                 }
+             }
+        )
+    }
 
     // ---- EXISTING STORAGE / UI LOGIC ----
     if (config.mode == WorkspaceMode.SAF && config.safTreeUri == null) {
-        // Rooted device, but no SAF permission yet
+
         SafSetupScreen(
             onPick = { onPickSafFolder() },
             onUseLegacy = {
-                // fall back to legacy even on rooted
                 config = config.copy(mode = WorkspaceMode.LEGACY_SD)
             }
         )
-        return
-    }
 
-    val storage: StorageProvider = remember(config) {
-        when (config.mode) {
-            WorkspaceMode.SAF -> SafStorageProvider(context, config.safTreeUri)
-            WorkspaceMode.LEGACY_SD -> LegacyFileStorageProvider(config.legacyRootPath)
+    } else {
+
+        val storage: StorageProvider = remember(config) {
+            when (config.mode) {
+                WorkspaceMode.SAF ->
+                    SafStorageProvider(context, config.safTreeUri!!)
+                WorkspaceMode.LEGACY_SD ->
+                    LegacyFileStorageProvider(config.legacyRootPath)
+            }
         }
+
+        TermuxFileManagerApp(storage = storage)
     }
 
-    TermuxFileManagerApp(storage = storage)
-}
