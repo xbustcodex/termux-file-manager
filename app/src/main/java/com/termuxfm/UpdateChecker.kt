@@ -71,13 +71,6 @@ fun isNewerVersion(remote: String, local: String): Boolean {
     return false
 }
 
-// Open APK URL in browser (or a download manager if you want later)
-fun openUpdateUrl(context: Context, url: String) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(intent)
-}
-
 class UpdateChecker(private val context: Context) {
 
     private val scope = CoroutineScope(Dispatchers.Main)
