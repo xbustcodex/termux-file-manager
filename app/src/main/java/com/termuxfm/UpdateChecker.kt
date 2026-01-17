@@ -17,7 +17,7 @@ import okhttp3.Request
 // Matches your version.json structure
 data class VersionInfo(
     @SerializedName("latest_version") val latestVersion: String,
-    @SerializedName("apk_url") val apkUrl: String,
+    @SerializedName("update_url") val apkUrl: String,
     @SerializedName("changelog") val changelog: String? = null
 )
 
