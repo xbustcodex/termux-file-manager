@@ -541,9 +541,11 @@ private fun DrawerContent(
                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                    modifier = Modifier.weight(1f)
                ) {
-                   Icon(Icons.Filled.TextSnippet, contentDescription = null)
-                   Text("Open Text Editor", style = MaterialTheme.typography.bodyLarge)
+                  Icon(Icons.Filled.TextSnippet, contentDescription = null)
+                  Text("Open Text Editor", style = MaterialTheme.typography.bodyLarge)
+               }
             }
+
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Other", style = MaterialTheme.typography.titleMedium)
