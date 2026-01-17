@@ -221,4 +221,4 @@ private fun AppRoot(onPickSafFolder: () -> Unit) {
 
         TermuxFileManagerApp(storage = storage)
     }
-
+}
