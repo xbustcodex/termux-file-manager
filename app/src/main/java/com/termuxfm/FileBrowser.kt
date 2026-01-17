@@ -910,7 +910,7 @@ private fun FileRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-             }
+            }
         },
         supportingContent = {
             Text(item.path, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -924,7 +924,7 @@ private fun FileRow(
                     Icon(Icons.Filled.Delete, contentDescription = "Delete")
                 }
             }
-
+        },
         modifier = Modifier.clickable { onClick() }
     )
 }
