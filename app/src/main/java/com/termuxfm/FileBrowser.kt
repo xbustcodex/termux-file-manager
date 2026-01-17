@@ -213,40 +213,41 @@ fun FileBrowserScreen(
     LaunchedEffect(path, storage) { refresh() }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Path: $path",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { showDrawer = true }) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Menu")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showToolsPanel = true }) {
-                        Icon(Icons.Filled.Build, contentDescription = "Tools")
-                    }
-                    IconButton(onClick = { refresh() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
-                   }
+    topBar = {
+        TopAppBar(
+            title = {
+                Text(
+                    "Path: $path",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = { showDrawer = true }) {
+                    Icon(Icons.Filled.Menu, contentDescription = "Menu")
                 }
-
-            )
-        },
-        FloatingActionButton(onClick = { showNewFolderDialog = true }) {
-            Icon(Icons.Filled.CreateNewFolder, contentDescription = "New folder")
-        }
-        FloatingActionButton(onClick = { showNewFileDialog = true }) {
-            Icon(Icons.Filled.NoteAdd, contentDescription = "New file")
-        }
-
+            },
+            actions = {
+                IconButton(onClick = { showToolsPanel = true }) {
+                    Icon(Icons.Filled.Build, contentDescription = "Tools")
+                }
+                IconButton(onClick = { refresh() }) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+                }
+            }
+        )
+    },
+    floatingActionButton = {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            FloatingActionButton(onClick = { showNewFolderDialog = true }) {
+                Icon(Icons.Filled.CreateNewFolder, contentDescription = "New folder")
+            }
+            FloatingActionButton(onClick = { showNewFileDialog = true }) {
+                Icon(Icons.Filled.NoteAdd, contentDescription = "New file")
             }
         }
+    }
+
     ) { pad ->
         Column(
             modifier = Modifier
