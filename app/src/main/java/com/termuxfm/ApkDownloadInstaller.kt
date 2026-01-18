@@ -19,9 +19,9 @@ class ApkDownloadInstaller(private val context: Context) {
             if (id != downloadId) return
 
             val dm = ctx.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val apkUri = dm.getUriForDownloadedFile(downloadId)
+            val apkUrl = dm.getUriForDownloadedFile(downloadId)
 
-            if (apkUri == null) {
+            if (apkUrl == null) {
                 Toast.makeText(ctx, "Download finished but APK not found", Toast.LENGTH_LONG).show()
                 return
             }
