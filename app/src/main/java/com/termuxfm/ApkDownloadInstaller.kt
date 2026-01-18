@@ -2,10 +2,9 @@ package com.termuxfm
 
 import android.app.DownloadManager
 import android.content.*
-import android.database.Cursor
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
+import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 
@@ -19,16 +18,28 @@ class ApkDownloadInstaller(private val context: Context) {
             if (id != downloadId) return
 
             val dm = ctx.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val apkUrl = dm.getUriForDownloadedFile(downloadId)
+            val apkUri = dm.getUriForDownloadedFile(downloadId)
 
-            if (apkUrl == null) {
+            if (apkUri == null) {
                 Toast.makeText(ctx, "Download finished but APK not found", Toast.LENGTH_LONG).show()
                 return
             }
 
-            // Launch installer
-            val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(apkUrl, "application/vnd.android.package-archive")
+            // Android 8+ needs "Install unknown apps" permission per-app
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!ctx.packageManager.canRequestPackageInstalls()) {
+                    Toast.makeText(ctx, "Allow 'Install unknown apps' to update", Toast.LENGTH_LONG).show()
+                    val settingsIntent = Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${ctx.packageName}")
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    ctx.startActivity(settingsIntent)
+                    return
+                }
+            }
+
+            val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                data = apkUri
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
@@ -51,18 +62,17 @@ class ApkDownloadInstaller(private val context: Context) {
             setTitle("Termux File Manager update")
             setDescription("Downloading update…")
             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            setMimeType("application/vnd.android.package-archive")
 
-            // Works well across Android versions; DM handles scoped storage internally
-            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+            // DM will manage file access; destination is fine
+            setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, fileName)
 
-            // Helps with GitHub/CDN redirects + caching behavior
             setAllowedOverMetered(true)
             setAllowedOverRoaming(true)
         }
 
         downloadId = dm.enqueue(request)
 
-        // Register receiver (Android 13+ needs export flag)
         if (Build.VERSION.SDK_INT >= 33) {
             ContextCompat.registerReceiver(
                 context,
