@@ -1,4 +1,4 @@
-🚀 Termux File Manager v3.0.0 – The Ultimate Script Launcher & File Controller for Termux
+🚀 Termux File Manager v3.0.7 – The Ultimate Script Launcher & File Controller for Termux
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
