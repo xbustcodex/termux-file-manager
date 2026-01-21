@@ -1,59 +1,155 @@
-🚀 Termux File Manager v3.0.7 – The Ultimate Script Launcher & File Controller for Termux
--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+⭐ If this project helps you, consider starring it — it really helps visibility.
+
+🚀 Termux File Manager v3.0.7
+The Ultimate Script Launcher & File Controller for Termux
+
+📊 Feature Comparison
+Termux File Manager vs Other Options
+Feature	Termux File Manager	Generic File Managers	Terminal Only
+Termux Home access	✅ Native SAF support	❌ Usually blocked	✅ Yes
+Run scripts	✅ One-tap	❌ No	✅ Yes
+Background execution	✅ Yes	❌ No	⚠️ Manual
+Built-in editor	✅ Yes	❌ No	⚠️ External
+Root awareness	✅ Automatic	⚠️ Partial	✅ Yes
+Android 12+ compatible	✅ SAF compliant	❌ Often broken	⚠️ Manual fixes
+Material 3 UI	✅ Yes	❌ No	❌ No
+Ads / tracking	❌ None	⚠️ Often	❌ None
+Beginner friendly	✅ Yes	⚠️ Limited	❌ No
+
+Result:
+Termux File Manager combines the power of the terminal with the usability of a modern Android UI — something no other tool currently offers.
+
+❓ FAQ (Frequently Asked Questions)
+❓ Is this an official Termux app?
+
+No. This is a third-party companion app built specifically for Termux users, but it integrates cleanly and safely with Termux APIs and permissions.
+
+❓ Do I need root?
+
+No.
+Root is optional:
+
+Without root → full SAF-based access (Android 12+ safe)
+
+With root → unrestricted file access
+
+❓ Does this replace the Termux terminal?
+
+No — it enhances it.
+You still get full terminal power, but now you can:
+
+Browse files visually
+
+Edit scripts easily
+
+Run tools without typing long paths
+
+❓ Is this safe to use?
+
+Yes.
+
+No ads
+
+No tracking
+
+No analytics
+
+No internet access required
+
+Fully offline
+
+Source code is open and auditable.
+
+❓ Can I use this to sell or manage Termux tools?
+
+Absolutely.
+It’s ideal for:
+
+Script packs
+
+Installers
+
+Automation tools
+
+Payload folders
+
+Shops distributing Termux-based utilities
+
+❓ Will this be on Google Play?
+
+There may be separate builds for GitHub and Play Store due to permission restrictions.
+The GitHub release is always the most powerful version.
 
 
-Termux File Manager is a powerful, modern Android file manager built specifically for Termux developers, hackers, penetration testers, automation enthusiasts, and power users.
 
-Designed with speed, simplicity, and full Termux integration, this tool gives you complete control over your Termux environment — without touching the terminal.
 
-This is not a generic file manager.
-This is your new Termux weapon.
 
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+Termux File Manager is a modern Android file manager and script launcher built specifically for Termux users — developers, hackers, penetration testers, automation enthusiasts, and power users.
+
+It provides full control of your Termux environment without touching the terminal, combining file management, script execution, and in-app editing into one clean Material 3 interface.
+
+❌ Not a generic file manager
+✅ A purpose-built Termux power tool
+
+⚡ Features at a Glance
+
+📁 Full file manager for Termux Home
+
+▶️ One-tap script execution
+
+📝 Built-in editor for .sh, .py, .js, .php
+
+⚙️ Background execution (no UI required)
+
+🔐 Root-aware permission handling
+
+🧭 SAF support for Android 12+
+
+🎨 Material 3 / Jetpack Compose UI
+
+🚫 No ads · No tracking · Fully offline
 
 ⭐ Why This File Manager Is Different
 
-Termux users need more than a basic browser — you need:
+Termux users need more than a basic file browser. You need:
 
 ✔ Direct access to Termux Home
+
 ✔ Root support
-✔ Ability to run scripts instantly
-✔ Edit .sh, .py, .js, .php files in-app
+
+✔ Run scripts instantly
+
+✔ Edit scripts in-app
+
 ✔ Background execution
-✔ SAF Termux folder picker for Android 12+
-✔ Full Material 3 design
-✔ No ads, no tracking, no nonsense
 
-This app delivers ALL of that in one lightweight package.
+✔ SAF Termux folder picker (Android 12+)
 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+✔ Clean, fast Material 3 UI
 
+Termux File Manager delivers all of this in one lightweight APK.
 
 🔥 Core Features
 🧭 Full File Manager for Termux
 
 Browse Termux Home safely using SAF
 
-Full SD card workspace support (/sdcard/TermuxProjects)
+Full SD-card workspace (/sdcard/TermuxProjects)
 
 Automatic root detection
 
-Create folders & files
+Create, rename, delete files & folders
 
-Rename, delete, and manage files like a desktop experience
+Desktop-style file operations
 
-Instantly navigate directories with smooth Compose UI
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
+Smooth Compose-based navigation
 
 📝 Built-In Script Editor
 
-A fast, minimal, distraction-free editor for:
+Edit files directly inside the app:
 
-Shell scripts (.sh, .bash)
+Shell (.sh, .bash)
 
 Python (.py)
 
@@ -61,30 +157,27 @@ JavaScript (.js)
 
 PHP (.php)
 
-Any plain text
+Any plain text file
 
-Features:
-✔ Clean Material layout
-✔ Instant Save
-✔ UTF-8 support
-✔ Error feedback (permissions, SAF, root issues)
+Editor highlights:
 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Clean Material layout
 
+Instant save
+
+UTF-8 support
+
+Permission & SAF error feedback
 
 ▶️ Run Any Script Instantly
 
 Every runnable script shows a Run button.
 
-Choose how you want to execute:
-
-
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 🏁 Run in Termux Terminal
 
-Opens Termux in a new or existing session and runs the script live.
+Opens Termux in a new or existing session
+
+Full interactive execution
 
 Perfect for:
 
@@ -92,143 +185,137 @@ Installers
 
 Setup scripts
 
-Tools that require interaction
-
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
+CLI tools
 
 ⚙️ Run in Background
 
-Runs silently using Termux’s RunCommandService.
+Executes silently using RunCommandService
 
 Perfect for:
 
 Automation
 
-Cron-style tasks
+Cron-style jobs
 
 Silent loggers
 
-Payload generators
+Payload generation
 
-Updates
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+Update scripts
 
 🔐 Advanced Permission System
 
-Auto-detects root and unlocks full access
+Root auto-detection
 
-SAF picker ensures Android 12+ can access Termux Home
+SAF picker for Android 12+ Termux Home
 
-Legacy mode /sdcard/TermuxProjects for full write access
+Legacy /sdcard/TermuxProjects mode
 
-Smart error detection: EACCES, missing permissions, restricted folders
+Smart error handling:
+
+EACCES
+
+Missing permissions
+
+Restricted paths
+
+🧰 Who This App Is For
+
+Ideal if you are:
+
+A Termux user
+
+A penetration tester
+
+A developer running scripts
+
+Managing tools like Hydra, Metasploit, Nmap
+
+Running automation, bots, installers
+
+Selling Termux-based tools
+
+Tired of typing long paths manually
+
+If you use Termux daily — this app belongs on your device.
+
+🖼️ Screenshots
+
+(Screenshots coming soon)
+Add images to a /screenshots folder and update paths below.
+
+screenshots/
+├── file_browser.png
+├── script_editor.png
+├── run_terminal.png
+├── run_background.png
+├── saf_picker.png
 
 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Example:
 
-
-🧰 Who This App Is Made For
-
-This is a must-have tool if you are:
-
-✔ A Termux user
-
-✔ A penetration tester
-
-✔ A developer running scripts
-
-✔ Someone who hates typing long paths manually
-
-✔ A person managing tools like Hydra, Metasploit, Nmap, Python bots, automation scripts, installers, payload folders
-
-✔ Running a shop selling Termux-based tools or scripts
-
-If you use Termux even once per day — you want this.
-
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+![File Browser](screenshots/file_browser.png)
+![Script Editor](screenshots/script_editor.png)
 
 💾 Download & Updates
 📥 Latest Version
 
-👉 All official APK files are published under the GitHub Releases section:
-https://github.com/xbustcodex/termux-file-manager/releases
+All official APKs are published under GitHub Releases:
 
-This is where you will always find the newest builds.
+👉 https://github.com/xbustcodex/termux-file-manager/releases
 
-Go there anytime to download the newest version.
-
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+This is the only official download source and always contains the newest build.
 
 🗂️ Changelog
+v3.0.7
+
+Stability improvements
+
+UI refinements
+
+Update system fixes
+
 v1.0 – Initial Release
 
-Full Termux file browser
+Termux file browser
 
-SAF Termux home picker
+SAF Termux Home picker
 
-SD card TermuxProjects mode
+SD-card TermuxProjects mode
 
-Script editor (create, edit, delete)
+Script editor
 
-Run scripts in Termux terminal
-
-Run scripts in background
+Run scripts in terminal & background
 
 Root detection
 
-File operations: create/rename/delete
+Material 3 UI
 
-Automatic path resolution
+🧩 Roadmap
 
-Material 3 interface
+Planned upgrades:
 
+🔜 Syntax highlighting
 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+🔜 “Open in Termux Terminal” context menu
 
+🔜 File search
 
-🧩 Upcoming Features (Upgrade Roadmap)
+🔜 Favorites / pinned directories
 
-🔜 Next major upgrades:
+🔜 Multi-tab browsing
 
-Syntax highlighting for editor
+🔜 Plugin system
 
-“Open in Termux Terminal” from context menu
-
-File search bar
-
-Favorites / pinned directories
-
-Multi-tab browsing
-
-Folder import/export
-
-Plugin system
-
-Script templates (Bash/Python)
-
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
+🔜 Script templates (Bash / Python)
 
 📜 License
 
 MIT License — free to modify & redistribute.
 
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 ❤️ Credits
 
 Built by xbustcodex
-Powered by Android + Kotlin + Jetpack Compose
+Powered by Android · Kotlin · Jetpack Compose
 
+⭐ If this project helps you, consider starring it — it really helps visibility.
