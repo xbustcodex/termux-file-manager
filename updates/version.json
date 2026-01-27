@@ -1,5 +1,5 @@
 {
-    "latest_version": "3.0.8",
+    "latest_version": "3.0.9",
     "update_url": "https://github.com/xbustcodex/termux-file-manager/releases/download/v3.0.7/app-release.apk",
     "changelog": "Fixed icons + improved update flow."
 }
