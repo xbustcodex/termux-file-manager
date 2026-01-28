@@ -1,6 +1,6 @@
 ⭐ If this project helps you, consider starring it — it really helps visibility.
 
-🚀 Termux File Manager v3.0.7
+🚀 Termux File Manager v3.0.9
 The Ultimate Script Launcher & File Controller for Termux
 
 📊 Feature Comparison
